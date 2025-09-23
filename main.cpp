@@ -13,7 +13,7 @@ struct Recursos {
         sig = NULL;
         ant = NULL;
     }
-};
+}*primeroRecursos;
 
 struct Organizadores {
     int ID;
@@ -22,6 +22,7 @@ struct Organizadores {
     string eventosAcargo;
     Organizadores *sig;
     Organizadores *ant;
+    estructIntermedioEventos * sublista;
     Organizadores(int id, string n, string d, string eac) {
         ID = id;
         nombre = n;
