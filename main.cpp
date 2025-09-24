@@ -16,7 +16,7 @@ struct Recursos {
 };
 
 // ------------------- Organizadores (lista doble) -------------------
-struct enlaceEvento; // forward declaration
+struct enlaceEvento;
 
 struct Organizadores {
     int ID;
@@ -36,7 +36,7 @@ struct Organizadores {
 };
 
 // ------------------- Eventos (lista simple) -------------------
-struct enlaceRecurso; // forward declaration
+struct enlaceRecurso;
 struct enlaceParticipante;
 struct enlaceCategoria;
 
@@ -145,14 +145,94 @@ struct enlaceCategoriaEvento {
     enlaceCategoriaEvento* sig;
 };
 
-// Un evento puede estar en una categoría
+// Un evento puede pertenecer a una categoría
 struct enlaceCategoria {
     categorias* refCategoria;
     enlaceCategoria* sig;
 };
 
+// ===================================================================
+// ====================== PROTOTIPOS DE FUNCIONES ====================
+// ===================================================================
 
+// --- CRUD Eventos ---
+void insertarEventoOrdenado(int id, string n, string f, string l, string t);
+eventos* buscarEvento(int id);
+void eliminarEvento(int id);
+void mostrarEventos();
+
+// --- CRUD Categorías ---
+void insertarCategoriaFinal(int id, string n, string d);
+categorias* buscarCategoria(int id);
+void mostrarCategorias();
+
+// --- CRUD Participantes ---
+void insertarParticipante(int id, string n, string c);
+participantes* buscarParticipante(int id);
+void eliminarParticipante(int id);
+void mostrarParticipantesAsc();
+void mostrarParticipantesDesc();
+
+// --- CRUD Organizadores ---
+void insertarOrganizador(int id, string n, string d);
+Organizadores* buscarOrganizador(int id);
+void eliminarOrganizador(int id);
+void mostrarOrganizadores();
+
+// --- CRUD Recursos ---
+void insertarRecurso(string n, string d);
+Recursos* buscarRecurso(string n);
+void eliminarRecurso(string n);
+void mostrarRecursos();
+
+// --- CRUD Historial ---
+void insertarHistorialOrdenado(int id, string fecha);
+void mostrarHistorial();
+
+// --- Relaciones ---
+void asignarCategoriaEvento(int eventoID, int categoriaID);
+void asignarOrganizadorEvento(int orgID, int eventoID);
+void inscribirParticipanteEvento(int partID, int eventoID);
+void asignarRecursoEvento(int eventoID, string recursoNombre);
+
+// --- Consultas ---
+void consultaParticipanteMasEventos();
+void consultaOrganizadorMasEventos();
+void consultaTipoEventoFrecuente();
+void consultaCategoriaMayorParticipacion();
+void consultaRecursoMasUtilizado();
+void consultaLugarMasEventos();
+void consultaEventoMasParticipantes();
+void consultaOrganizadorMasCategorias();
+void consultaPorcentajeParticipacion();
+
+// --- Reportes ---
+void reporteParticipantesAscDesc();
+void reporteEventosPorOrganizador(int orgID);
+void reporteEventosPorCategoria(int catID);
+void reporteRecursosPorEvento(int eventoID);
+void reporteEventosPorLugar(string lugar);
+void reporteTalleresPorDepartamento(string depto);
+void reporteHistorial();
+void reporteOrganizadoresSinEventos();
+
+// ===================================================================
+// ============================ MAIN =================================
+// ===================================================================
 int main() {
-    std::cout << "Hola Mundo" << std::endl;
+    cout << "Sistema de Gestion de Eventos Universitarios - Esqueleto" << endl;
+
+    // Aquí puedes llamar funciones de prueba
+    // insertarEventoOrdenado(1, "Charla IA", "2025-09-30", "Auditorio", "Charla");
+
     return 0;
+}
+
+// ===================================================================
+// ==================== FUNCIONES (VACÍAS) ===========================
+// ===================================================================
+
+// Ejemplo de una función vacía
+void insertarEventoOrdenado(int id, string n, string f, string l, string t) {
+    cout << "[insertarEventoOrdenado] - Funcion no implementada aun" << endl;
 }
