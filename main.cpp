@@ -13,7 +13,7 @@ struct Recursos {
         sig = NULL;
         ant = NULL;
     }
-};
+}*primeroR;
 
 // ------------------- Organizadores (lista doble) -------------------
 struct enlaceEvento;
@@ -38,7 +38,7 @@ struct Organizadores {
 // ------------------- Eventos (lista simple) -------------------
 struct enlaceRecurso;
 struct enlaceParticipante;
-struct enlaceCategoria;
+struct categorias;
 
 struct eventos {
     int ID;
@@ -46,19 +46,20 @@ struct eventos {
     string fecha;
     string lugar;
     string tipo;
-    enlaceRecurso* listaRecursos;           // relación con recursos
-    enlaceParticipante* listaParticipantes; // relación con participantes
-    enlaceCategoria* categoria;             // relación con categoría (uno a uno o muchos a muchos)
-    eventos *sig;
+    categorias* categoria;          // Relación directa: cada evento pertenece a UNA categoría
+    enlaceRecurso* listaRecursos;   // Recursos asignados al evento
+    enlaceParticipante* listaParticipantes; // Participantes inscritos en el evento
+    eventos* sig;                   // Para la lista simple de eventos
+
     eventos(int id, string n, string fe, string l, string t) {
         ID = id;
         nombre = n;
         fecha = fe;
         lugar = l;
         tipo = t;
+        categoria = NULL;
         listaRecursos = NULL;
         listaParticipantes = NULL;
-        categoria = NULL;
         sig = NULL;
     }
 };
@@ -106,9 +107,13 @@ struct historial_eventos {
     int ID;
     string fecha;
     historial_eventos *sig;
-    historial_eventos(int id, string f) {
+    participantes* refParticipante;
+    eventos* refEvento;
+    historial_eventos(int id, string f, participantes* p, eventos* e) {
         ID = id;
         fecha = f;
+        refParticipante = p;
+        refEvento = e;
         sig = NULL;
     }
 } *primeroHistorial;
@@ -131,12 +136,6 @@ struct enlaceRecurso {
 struct enlaceParticipante {
     participantes* refParticipante;
     enlaceParticipante* sig;
-};
-
-// Un participante puede estar inscrito en varios eventos
-struct enlaceEventoParticipante {
-    eventos* refEvento;
-    enlaceEventoParticipante* sig;
 };
 
 // Una categoría puede tener varios eventos
