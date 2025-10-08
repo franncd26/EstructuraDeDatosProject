@@ -169,6 +169,22 @@ bool existeParticipanteID(int id);
 bool existeOrganizadorID(int id);
 bool existeRecursoNombre(const string& n);
 
+bool esFechaValida(const string& f);
+bool esTextoRazonable(const string& s);
+
+
+void insertarEventoInteractivo(); // wrapper que valida en bucle
+
+void insertarCategoriaInteractivo();
+
+bool existeRegistroHistorial(int partID, int eventoID);
+int siguienteHistID();
+void registrarHistorialSoloConEvento();
+
+
+
+
+
 // Funciones CRUD (Insertar)
 void insertarEventoOrdenado(int id, string n, string f, string l, string t);
 void insertarCategoriaFinal(int id, string n, string d);
@@ -203,6 +219,11 @@ void registrarHistorial(int historialID, string fecha, int partID, int eventoID)
 void mostrarEventos();
 void mostrarRecursos();
 void mostrarHistorial();
+void mostrarCategorias();
+void mostrarOrganizadores();
+void mostrarParticipantes();
+
+
 
 // Funciones de Consultas (9)
 void consultaParticipanteMasEventos();
@@ -240,6 +261,37 @@ void cargarDatosIniciales();
 
 void imprimirTodasLasConsultas();
 void imprimirTodosLosReportes();
+
+bool agregarParticipanteEventoSiNoExiste(int eventoID, int partID);
+bool agregarRecursoEventoSiNoExiste(int eventoID, const string& recursoNombre);
+
+// (si ya los tienes, no los dupliques)
+bool yaInscritoEvento(participantes* p, eventos* e);
+bool yaAsignadoRecursoEvento(int eventoID, const string& recursoNombre);
+
+
+// Reemplazos de campos básicos
+bool reemplazarNombreEvento(int eventoID, const string& nombreActual, const string& nombreNuevo);
+bool reemplazarFechaEvento(int eventoID, const string& fechaActual, const string& fechaNueva);
+bool reemplazarLugarEvento(int eventoID, const string& lugarActual, const string& lugarNuevo);
+bool reemplazarTipoEvento(int eventoID, const string& tipoActual, const string& tipoNuevo);
+
+// Reemplazos de relaciones
+bool reemplazarCategoriaEvento(int eventoID, int catActualID, int catNuevaID); // usar -1 para quitar
+bool reemplazarOrganizadorEvento(int eventoID, int orgActualID, int orgNuevoID);
+bool reemplazarParticipanteEvento(int eventoID, int partActualID, int partNuevoID);
+bool reemplazarRecursoEvento(int eventoID, const string& recursoActual, const string& recursoNuevo);
+
+// Helpers necesarios (si ya existen en tu código, no los dupliques)
+void desasignarOrganizadorEvento(int orgID, int eventoID);
+void desinscribirParticipanteEvento(int partID, int eventoID);
+void desasignarRecursoEvento(int eventoID, const string& nombre);
+bool yaAsignadoOrganizador(int orgID, int eventoID);
+bool yaInscrito(participantes* p, eventos* e);
+bool yaAsignadoRecurso(int eventoID, const string& recursoNombre);
+
+string organizadoresDelEvento(eventos* e);
+
 
 // ===================================================================
 // ======================== IMPLEMENTACIÓN CRUD ======================
@@ -299,10 +351,12 @@ bool existeRecursoNombre(const string& n){ return buscarRecurso(n) != NULL; }
 
 // Implementación de Inserción (con validaciones)
 void insertarEventoOrdenado(int id, string n, string f, string l, string t) {
-    if (id_invalido(id) || str_vacia(n) || str_vacia(f) || str_vacia(l) || str_vacia(t)) {
-        cout << "❌ Datos invalidos al insertar Evento.\n"; return;
-    }
-    if (existeEventoID(id)) { cout << "❌ ID de Evento repetido.\n"; return; }
+    if (id_invalido(id)) { cout << " ID invalido al insertar Evento.\n"; return; }
+    if (str_vacia(n))    { cout << " Nombre de evento vacio.\n"; return; }
+    if (!esFechaValida(f)){ cout << " Fecha invalida. Use formato YYYY-MM-DD.\n"; return; }
+    if (str_vacia(l) || !esTextoRazonable(l)) { cout << " Lugar invalido. Debe ser texto.\n"; return; }
+    if (str_vacia(t) || !esTextoRazonable(t)) { cout << " Tipo invalido. Debe ser texto.\n"; return; }
+    if (existeEventoID(id)) { cout << " ID de Evento repetido.\n"; return; }
 
     eventos* nuevo = new eventos(id, n, f, l, t);
     if (primeroE == NULL) { primeroE = nuevo; return; }
@@ -311,11 +365,12 @@ void insertarEventoOrdenado(int id, string n, string f, string l, string t) {
     while (actual->sig != NULL && actual->sig->fecha < nuevo->fecha) actual = actual->sig;
     nuevo->sig = actual->sig; actual->sig = nuevo;
 }
+
 void insertarCategoriaFinal(int id, string n, string d) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(d)) {
-        cout << "❌ Datos invalidos al insertar Categoria.\n"; return;
+        cout << " Datos invalidos al insertar Categoria.\n"; return;
     }
-    if (existeCategoriaID(id)) { cout << "❌ ID de Categoria repetido.\n"; return; }
+    if (existeCategoriaID(id)) { cout << " ID de Categoria repetido.\n"; return; }
 
     categorias* nuevo = new categorias(id, n, d);
     if (primeroC == NULL) { primeroC = nuevo; return; }
@@ -324,9 +379,9 @@ void insertarCategoriaFinal(int id, string n, string d) {
 }
 void insertarParticipante(int id, string n, string c) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(c)) {
-        cout << "❌ Datos invalidos al insertar Participante.\n"; return;
+        cout << " Datos invalidos al insertar Participante.\n"; return;
     }
-    if (existeParticipanteID(id)) { cout << "❌ ID de Participante repetido.\n"; return; }
+    if (existeParticipanteID(id)) { cout << " ID de Participante repetido.\n"; return; }
 
     participantes* nuevo = new participantes(id, n, c);
     if (primeroP == NULL) { primeroP = nuevo; return; }
@@ -335,9 +390,9 @@ void insertarParticipante(int id, string n, string c) {
 }
 void insertarOrganizador(int id, string n, string d) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(d)) {
-        cout << "❌ Datos invalidos al insertar Organizador.\n"; return;
+        cout << " Datos invalidos al insertar Organizador.\n"; return;
     }
-    if (existeOrganizadorID(id)) { cout << "❌ ID de Organizador repetido.\n"; return; }
+    if (existeOrganizadorID(id)) { cout << " ID de Organizador repetido.\n"; return; }
 
     Organizadores* nuevo = new Organizadores(id, n, d);
     if (primeroOr == NULL) { primeroOr = nuevo; return; }
@@ -346,9 +401,9 @@ void insertarOrganizador(int id, string n, string d) {
 }
 void insertarRecurso(string n, string d) {
     if (str_vacia(n) || str_vacia(d)) {
-        cout << "❌ Datos invalidos al insertar Recurso.\n"; return;
+        cout << " Datos invalidos al insertar Recurso.\n"; return;
     }
-    if (existeRecursoNombre(n)) { cout << "❌ Nombre de Recurso repetido.\n"; return; }
+    if (existeRecursoNombre(n)) { cout << " Nombre de Recurso repetido.\n"; return; }
 
     Recursos* nuevo = new Recursos(n, d);
     if (primeroR == NULL) { primeroR = nuevo; return; }
@@ -357,7 +412,7 @@ void insertarRecurso(string n, string d) {
 }
 void insertarHistorialOrdenado(int id, string f, participantes* p, eventos* e) {
     if (id_invalido(id) || str_vacia(f) || p==NULL || e==NULL) {
-        cout << "❌ Datos invalidos al insertar Historial.\n"; return;
+        cout << " Datos invalidos al insertar Historial.\n"; return;
     }
     historial_eventos* nuevo = new historial_eventos(id, f, p, e);
     if (primeroHistorial == NULL) { primeroHistorial = nuevo; nuevo->sig = nuevo; return; }
@@ -380,6 +435,7 @@ void insertarHistorialOrdenado(int id, string f, participantes* p, eventos* e) {
         prev->sig = nuevo; nuevo->sig = curr;
     }
 }
+
 
 // Implementaciones de Relación
 void asignarOrganizadorEvento(int orgID, int eventoID) {
@@ -417,18 +473,64 @@ void registrarHistorial(int historialID, string fecha, int partID, int eventoID)
     participantes* p = buscarParticipante(partID);
     eventos* e = buscarEvento(eventoID);
     if (!p || !e) return;
+
+    if(existeRegistroHistorial(partID, eventoID)){
+        cout << " Ya existia este registro en historial.\n";
+        return;
+    }
     insertarHistorialOrdenado(historialID, fecha, p, e);
 }
+
 
 // ===================================================================
 // ========================= MODIFICAR / ELIMINAR ====================
 // ===================================================================
 
-bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevoLugar, string nuevoTipo){
-    eventos* e = buscarEvento(id); if(!e){ cout<<"❌ Evento no encontrado.\n"; return false; }
-    if (str_vacia(nuevoNombre) || str_vacia(nuevaFecha) || str_vacia(nuevoLugar) || str_vacia(nuevoTipo)){
-        cout<<"❌ Datos invalidos.\n"; return false;
+// ------------------- VALIDACIONES EXTRA -------------------
+bool esFechaValida(const string& f){
+    // Formato esperado: YYYY-MM-DD => longitud 10, guiones en 4 y 7
+    if (f.size() != 10) return false;
+    if (f[4] != '-' || f[7] != '-') return false;
+
+    // Todos los otros deben ser dígitos
+    for (int i = 0; i < 10; ++i){
+        if (i == 4 || i == 7) continue;
+        char c = f[i];
+        if (c < '0' || c > '9') return false;
     }
+
+    int y = stoi(f.substr(0,4));
+    int m = stoi(f.substr(5,2));
+    int d = stoi(f.substr(8,2));
+
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+
+    // (Simple: no validamos meses de 30/31 ni bisiesto; si quieres lo añadimos)
+    return true;
+}
+
+bool esTextoRazonable(const string& s){
+    // Debe tener al menos una letra (evita entradas como "56" o "5")
+    for(char c : s){
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= char(160))) {
+            // permite letras ASCII y también acentos simples (>=160)
+            return true;
+        }
+    }
+    return false;
+}
+
+
+bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevoLugar, string nuevoTipo){
+    eventos* e = buscarEvento(id);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+
+    if (str_vacia(nuevoNombre))                { cout<<" Nombre vacio.\n"; return false; }
+    if (!esFechaValida(nuevaFecha))            { cout<<" Fecha invalida. Use formato YYYY-MM-DD.\n"; return false; }
+    if (str_vacia(nuevoLugar) || !esTextoRazonable(nuevoLugar)) { cout<<" Lugar invalido. Debe ser texto.\n"; return false; }
+    if (str_vacia(nuevoTipo)  || !esTextoRazonable(nuevoTipo))  { cout<<" Tipo invalido. Debe ser texto.\n"; return false; }
+
     bool cambiaOrden = (nuevaFecha != e->fecha);
     e->nombre = nuevoNombre; e->lugar = nuevoLugar; e->tipo = nuevoTipo;
     if (!cambiaOrden){ e->fecha = nuevaFecha; return true; }
@@ -446,31 +548,32 @@ bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevo
     eventos* a = primeroE; while(a->sig && a->sig->fecha < e->fecha) a = a->sig;
     e->sig = a->sig; a->sig = e; return true;
 }
+
 bool modificarCategoria(int id, string nuevoNombre, string nuevaDesc){
-    categorias* c = buscarCategoria(id); if(!c){ cout<<"❌ Categoria no encontrada.\n"; return false; }
-    if (str_vacia(nuevoNombre) || str_vacia(nuevaDesc)){ cout<<"❌ Datos invalidos.\n"; return false; }
+    categorias* c = buscarCategoria(id); if(!c){ cout<<" Categoria no encontrada.\n"; return false; }
+    if (str_vacia(nuevoNombre) || str_vacia(nuevaDesc)){ cout<<" Datos invalidos.\n"; return false; }
     c->nombre = nuevoNombre; c->descripcion = nuevaDesc; return true;
 }
 bool modificarParticipante(int id, string nuevoNombre, string nuevaCarrera){
-    participantes* p = buscarParticipante(id); if(!p){ cout<<"❌ Participante no encontrado.\n"; return false; }
-    if (str_vacia(nuevoNombre) || str_vacia(nuevaCarrera)){ cout<<"❌ Datos invalidos.\n"; return false; }
+    participantes* p = buscarParticipante(id); if(!p){ cout<<" Participante no encontrado.\n"; return false; }
+    if (str_vacia(nuevoNombre) || str_vacia(nuevaCarrera)){ cout<<" Datos invalidos.\n"; return false; }
     p->nombre = nuevoNombre; p->carrera = nuevaCarrera; return true;
 }
 bool modificarOrganizador(int id, string nuevoNombre, string nuevoDepto){
-    Organizadores* o = buscarOrganizador(id); if(!o){ cout<<"❌ Organizador no encontrado.\n"; return false; }
-    if (str_vacia(nuevoNombre) || str_vacia(nuevoDepto)){ cout<<"❌ Datos invalidos.\n"; return false; }
+    Organizadores* o = buscarOrganizador(id); if(!o){ cout<<" Organizador no encontrado.\n"; return false; }
+    if (str_vacia(nuevoNombre) || str_vacia(nuevoDepto)){ cout<<" Datos invalidos.\n"; return false; }
     o->nombre = nuevoNombre; o->departamento = nuevoDepto; return true;
 }
 bool modificarRecurso(const string& nombreActual, string nuevoNombre, string nuevaDesc){
-    Recursos* r = buscarRecurso(nombreActual); if(!r){ cout<<"❌ Recurso no encontrado.\n"; return false; }
-    if (str_vacia(nuevoNombre) || str_vacia(nuevaDesc)){ cout<<"❌ Datos invalidos.\n"; return false; }
-    if (nuevoNombre != nombreActual && existeRecursoNombre(nuevoNombre)){ cout<<"❌ Ya existe un recurso con ese nombre.\n"; return false; }
+    Recursos* r = buscarRecurso(nombreActual); if(!r){ cout<<" Recurso no encontrado.\n"; return false; }
+    if (str_vacia(nuevoNombre) || str_vacia(nuevaDesc)){ cout<<" Datos invalidos.\n"; return false; }
+    if (nuevoNombre != nombreActual && existeRecursoNombre(nuevoNombre)){ cout<<" Ya existe un recurso con ese nombre.\n"; return false; }
     r->nombre = nuevoNombre; r->descripcion = nuevaDesc; return true;
 }
 
 // ---- Eliminar ----
 bool eliminarEvento(int id){
-    eventos* target = buscarEvento(id); if(!target){ cout<<"❌ Evento no encontrado.\n"; return false; }
+    eventos* target = buscarEvento(id); if(!target){ cout<<" Evento no encontrado.\n"; return false; }
 
     // 1) quitar referencias desde Organizadores
     Organizadores* o = primeroOr;
@@ -540,7 +643,7 @@ bool eliminarEvento(int id){
     return true;
 }
 bool eliminarCategoria(int id){
-    categorias* c = buscarCategoria(id); if(!c){ cout<<"❌ Categoria no encontrada.\n"; return false; }
+    categorias* c = buscarCategoria(id); if(!c){ cout<<" Categoria no encontrada.\n"; return false; }
     // desasociar eventos que apuntan a esta categoria
     eventos* e = primeroE;
     while(e){ if(e->categoria==c) e->categoria=NULL; e=e->sig; }
@@ -554,7 +657,7 @@ bool eliminarCategoria(int id){
     primeroC = dummy->sig; delete dummy; delete c; return true;
 }
 bool eliminarParticipante(int id){
-    participantes* p = buscarParticipante(id); if(!p){ cout<<"❌ Participante no encontrado.\n"; return false; }
+    participantes* p = buscarParticipante(id); if(!p){ cout<<" Participante no encontrado.\n"; return false; }
     // quitar en cada evento su enlaceParticipante y su lista de eventos
     enlaceEventoParticipante* evp = p->listaEventos;
     while(evp){
@@ -589,7 +692,7 @@ bool eliminarParticipante(int id){
     delete p; return true;
 }
 bool eliminarOrganizador(int id){
-    Organizadores* o = buscarOrganizador(id); if(!o){ cout<<"❌ Organizador no encontrado.\n"; return false; }
+    Organizadores* o = buscarOrganizador(id); if(!o){ cout<<" Organizador no encontrado.\n"; return false; }
     // liberar su sublista de eventos (solo enlaces, no borrar eventos)
     enlaceEvento* le = o->listaEventos; while(le){ enlaceEvento* tmp=le; le=le->sig; delete tmp; }
     // quitar de lista doble
@@ -598,7 +701,7 @@ bool eliminarOrganizador(int id){
     delete o; return true;
 }
 bool eliminarRecurso(const string& nombre){
-    Recursos* r = buscarRecurso(nombre); if(!r){ cout<<"❌ Recurso no encontrado.\n"; return false; }
+    Recursos* r = buscarRecurso(nombre); if(!r){ cout<<" Recurso no encontrado.\n"; return false; }
     // quitar de todos los eventos donde aparezca
     eventos* e = primeroE;
     while(e){
@@ -618,7 +721,7 @@ bool eliminarRecurso(const string& nombre){
     delete r; return true;
 }
 bool eliminarHistorial(int id){
-    if(!primeroHistorial){ cout<<"❌ Historial vacio.\n"; return false; }
+    if(!primeroHistorial){ cout<<" Historial vacio.\n"; return false; }
     historial_eventos* curr=primeroHistorial; historial_eventos* prev=NULL;
     do{
         if(curr->ID==id){
@@ -632,7 +735,7 @@ bool eliminarHistorial(int id){
         }
         prev=curr; curr=curr->sig;
     } while(curr && curr!=primeroHistorial);
-    cout<<"❌ ID de historial no encontrado.\n"; return false;
+    cout<<" ID de historial no encontrado.\n"; return false;
 }
 
 // ===================================================================
@@ -641,7 +744,7 @@ bool eliminarHistorial(int id){
 
 // 1️⃣ Participante que ha asistido a más eventos
 void consultaParticipanteMasEventos() {
-    if (primeroP == NULL) { cout << "1️⃣ No hay participantes registrados.\n"; return; }
+    if (primeroP == NULL) { cout << " No hay participantes registrados.\n"; return; }
     participantes* p = primeroP; participantes* mayor = NULL; int maxEventos = 0;
     while (p != NULL) {
         int contador = 0; enlaceEventoParticipante* aux = p->listaEventos;
@@ -650,14 +753,14 @@ void consultaParticipanteMasEventos() {
         p = p->sig;
     }
     if (mayor != NULL)
-        cout << "1️⃣ Participante con mas eventos: " << mayor->nombre << " (" << maxEventos << " eventos)\n";
+        cout << " Participante con mas eventos: " << mayor->nombre << " (" << maxEventos << " eventos)\n";
     else
-        cout << "1️⃣ No hay inscripciones registradas.\n";
+        cout << " No hay inscripciones registradas.\n";
 }
 
 // 2️⃣ Organizador con más eventos a cargo
 void consultaOrganizadorMasEventos() {
-    if (primeroOr == NULL) { cout << "2️⃣ No hay organizadores registrados.\n"; return; }
+    if (primeroOr == NULL) { cout << " No hay organizadores registrados.\n"; return; }
     Organizadores* o = primeroOr; Organizadores* mayor = NULL; int maxEventos = 0;
     while (o != NULL) {
         int contador = 0; enlaceEvento* aux = o->listaEventos;
@@ -666,28 +769,57 @@ void consultaOrganizadorMasEventos() {
         o = o->sig;
     }
     if (mayor != NULL)
-        cout << "2️⃣ Organizador con mas eventos: " << mayor->nombre << " | Eventos: " << maxEventos << endl;
+        cout << " Organizador con mas eventos: " << mayor->nombre << " | Eventos: " << maxEventos << endl;
     else
-        cout << "2️⃣ No hay organizadores con eventos.\n";
+        cout << " No hay organizadores con eventos.\n";
 }
 
 // 3️⃣ Tipo de evento más frecuente
 void consultaTipoEventoFrecuente() {
-    if (primeroE == NULL) { cout << "3️⃣ No hay eventos registrados.\n"; return; }
-    int charlas = 0, talleres = 0, ferias = 0, otros = 0; eventos* e = primeroE;
+    if (primeroE == NULL) { cout << " No hay eventos registrados.\n"; return; }
+
+    struct TipoCont { string tipo; int cantidad; };
+    TipoCont tipos[100]; int nTipos = 0;
+
+    // contar por tipo (Charla, Taller, Feria, etc.)
+    eventos* e = primeroE;
     while (e != NULL) {
-        if (e->tipo == "Charla") charlas++;
-        else if (e->tipo == "Taller") talleres++;
-        else if (e->tipo == "Feria") ferias++;
-        else otros++;
+        bool found = false;
+        for (int i = 0; i < nTipos; ++i) {
+            if (tipos[i].tipo == e->tipo) { tipos[i].cantidad++; found = true; break; }
+        }
+        if (!found && nTipos < 100) {
+            tipos[nTipos].tipo = e->tipo;
+            tipos[nTipos].cantidad = 1;
+            nTipos++;
+        }
         e = e->sig;
     }
-    int max = charlas; string tipo = "Charla";
-    if (talleres > max) { max = talleres; tipo = "Taller"; }
-    if (ferias > max) { max = ferias; tipo = "Feria"; }
-    if (otros > max) { max = otros; tipo = "Otro tipo"; }
-    cout << "3️⃣ Tipo de evento mas frecuente: " << tipo << " (" << max << " eventos)\n";
+
+    // hallar máximo
+    int maxCant = 0;
+    for (int i = 0; i < nTipos; ++i) if (tipos[i].cantidad > maxCant) maxCant = tipos[i].cantidad;
+
+    // contar empatados
+    int empatados = 0;
+    for (int i = 0; i < nTipos; ++i) if (tipos[i].cantidad == maxCant) empatados++;
+
+    if (empatados > 1) {
+        cout << " Tipos de evento mas frecuentes (empate con " << maxCant << " eventos):\n";
+        for (int i = 0; i < nTipos; ++i)
+            if (tipos[i].cantidad == maxCant)
+                cout << "  - " << tipos[i].tipo << "\n";
+    } else {
+        for (int i = 0; i < nTipos; ++i)
+            if (tipos[i].cantidad == maxCant) {
+                cout << " Tipo de evento mas frecuente: " << tipos[i].tipo
+                     << " (" << maxCant << " eventos)\n";
+                break;
+            }
+    }
 }
+
+
 
 // 4️⃣ Categoría con mayor participación estudiantil
 void consultaCategoriaMayorParticipacion() {
@@ -704,14 +836,14 @@ void consultaCategoriaMayorParticipacion() {
         c = c->sig;
     }
     if (mayor != NULL)
-        cout << "4️⃣ Categoria con mayor participacion: " << mayor->nombre << " (" << maxParticipantes << " participantes)\n";
+        cout << " Categoria con mayor participacion: " << mayor->nombre << " (" << maxParticipantes << " participantes)\n";
     else
-        cout << "4️⃣ No hay categorias con eventos inscritos.\n";
+        cout << " No hay categorias con eventos inscritos.\n";
 }
 
 // 5️⃣ Recurso más utilizado en eventos
 void consultaRecursoMasUtilizado() {
-    if (primeroR == NULL) { cout << "5️⃣ No hay recursos registrados.\n"; return; }
+    if (primeroR == NULL) { cout << " No hay recursos registrados.\n"; return; }
     Recursos* r = primeroR; Recursos* masUsado = NULL; int maxUso = 0;
     while (r != NULL) {
         int contador = 0; eventos* e = primeroE;
@@ -727,14 +859,14 @@ void consultaRecursoMasUtilizado() {
         r = r->sig;
     }
     if (masUsado != NULL)
-        cout << "5️⃣ Recurso mas utilizado: " << masUsado->nombre << " (" << maxUso << " eventos)\n";
+        cout << " Recurso mas utilizado: " << masUsado->nombre << " (" << maxUso << " eventos)\n";
     else
-        cout << "5️⃣ Ningun recurso ha sido usado.\n";
+        cout << "Ningun recurso ha sido usado.\n";
 }
 
 // 6️⃣ Lugar que ha albergado más eventos (con empates)
 void consultaLugarMasEventos() {
-    if (primeroE == NULL) { cout << "6️⃣ No hay eventos registrados.\n"; return; }
+    if (primeroE == NULL) { cout << " No hay eventos registrados.\n"; return; }
 
     struct LugarContador { string lugar; int cantidad; };
     LugarContador lugares[100];
@@ -763,14 +895,14 @@ void consultaLugarMasEventos() {
     for (int i = 0; i < totalLugares; i++) { if (lugares[i].cantidad == max) empates++; }
 
     if (empates > 1) {
-        cout << "6️⃣ Hay varios lugares empatados con " << max << " eventos:\n";
+        cout << " Hay varios lugares empatados con " << max << " eventos:\n";
         for (int i = 0; i < totalLugares; i++) {
             if (lugares[i].cantidad == max) cout << " - " << lugares[i].lugar << endl;
         }
     } else {
         for (int i = 0; i < totalLugares; i++) {
             if (lugares[i].cantidad == max) {
-                cout << "6️⃣ Lugar con mas eventos: " << lugares[i].lugar << " (" << max << " eventos)\n";
+                cout << " Lugar con mas eventos: " << lugares[i].lugar << " (" << max << " eventos)\n";
                 break;
             }
         }
@@ -779,7 +911,7 @@ void consultaLugarMasEventos() {
 
 // 7️⃣ Evento con la mayor cantidad de participantes inscritos
 void consultaEventoMasParticipantes() {
-    if (primeroE == NULL) { cout << "7️⃣ No hay eventos registrados.\n"; return; }
+    if (primeroE == NULL) { cout << " No hay eventos registrados.\n"; return; }
     eventos* e = primeroE; eventos* mayor = NULL; int maxPart = -1;
 
     while (e != NULL) {
@@ -791,46 +923,67 @@ void consultaEventoMasParticipantes() {
     }
 
     if (mayor != NULL && maxPart > 0)
-        cout << "7️⃣ Evento con mas participantes: " << mayor->nombre << " (Fecha: " << mayor->fecha << ", " << maxPart << " inscritos)\n";
+        cout << " Evento con mas participantes: " << mayor->nombre << " (Fecha: " << mayor->fecha << ", " << maxPart << " inscritos)\n";
     else
-        cout << "7️⃣ No se encontraron eventos con participantes inscritos.\n";
+        cout << " No se encontraron eventos con participantes inscritos.\n";
 }
 
 // 8️⃣ Organizador que ha gestionado eventos en más categorías distintas
+// 8️⃣ Organizador que ha gestionado eventos en más categorías distintas (con empates + lista de categorías)
 void consultaOrganizadorMasCategorias() {
-    if (primeroOr == NULL) { cout << "8️⃣ No hay organizadores registrados.\n"; return; }
-    Organizadores* org = primeroOr; Organizadores* mayor = NULL; int maxCategorias = -1;
+    if (primeroOr == NULL) { cout << " No hay organizadores registrados.\n"; return; }
 
-    while (org != NULL) {
-        int categoriasID[100]; int numCategorias = 0;
-        enlaceEvento* ev = org->listaEventos;
-
-        while (ev != NULL) {
-            if (ev->refEvento->categoria != NULL) {
-                int catID = ev->refEvento->categoria->ID;
+    // 1) primera pasada: hallar el máximo número de categorías distintas
+    int maxCategorias = -1;
+    for (Organizadores* org = primeroOr; org != NULL; org = org->sig) {
+        categorias* cats[200]; int nCats = 0;
+        for (enlaceEvento* ev = org->listaEventos; ev != NULL; ev = ev->sig) {
+            if (ev->refEvento && ev->refEvento->categoria) {
+                categorias* c = ev->refEvento->categoria;
                 bool existe = false;
-                for (int i = 0; i < numCategorias; i++) { if (categoriasID[i] == catID) { existe = true; break; } }
-                if (!existe && numCategorias < 100) { categoriasID[numCategorias++] = catID; }
+                for (int i = 0; i < nCats; ++i) if (cats[i] == c) { existe = true; break; }
+                if (!existe && nCats < 200) cats[nCats++] = c;
             }
-            ev = ev->sig;
         }
-
-        if (numCategorias > maxCategorias) { maxCategorias = numCategorias; mayor = org; }
-        org = org->sig;
+        if (nCats > maxCategorias) maxCategorias = nCats;
     }
 
-    if (mayor != NULL)
-        cout << "8️⃣ Organizador con mas categorias distintas: " << mayor->nombre << " (" << maxCategorias << " categorias)\n";
-    else
-        cout << "8️⃣ No hay organizadores con eventos asignados a categorias.\n";
+    if (maxCategorias <= 0) {
+        cout << " No hay organizadores con eventos asignados a categorias.\n";
+        return;
+    }
+
+    // 2) segunda pasada: imprimir TODOS los empatados + su lista de categorías
+    cout << " Organizadores con mas categorias distintas (" << maxCategorias << "):\n";
+    for (Organizadores* org = primeroOr; org != NULL; org = org->sig) {
+        categorias* cats[200]; int nCats = 0;
+        for (enlaceEvento* ev = org->listaEventos; ev != NULL; ev = ev->sig) {
+            if (ev->refEvento && ev->refEvento->categoria) {
+                categorias* c = ev->refEvento->categoria;
+                bool existe = false;
+                for (int i = 0; i < nCats; ++i) if (cats[i] == c) { existe = true; break; }
+                if (!existe && nCats < 200) cats[nCats++] = c;
+            }
+        }
+        if (nCats == maxCategorias) {
+            cout << "  - " << org->nombre << " (" << org->departamento << ") | Categorias: ";
+            for (int i = 0; i < nCats; ++i) {
+                if (i) cout << ", ";
+                cout << cats[i]->nombre;
+            }
+            cout << "\n";
+        }
+    }
 }
 
-// 9️⃣ Porcentaje de estudiantes que han participado en al menos un evento vs. los que no
+
+//  Porcentaje de estudiantes que han participado en al menos un evento vs. los que no
 void consultaPorcentajeParticipacion() {
-    if (primeroP == NULL) { cout << "9️⃣ No hay participantes registrados.\n"; return; }
+    if (primeroP == NULL) { cout << " No hay participantes registrados.\n"; return; }
     int totalParticipantes = 0; int conEventos = 0; participantes* p = primeroP;
 
     while (p != NULL) {
+        mostrarParticipantes();
         totalParticipantes++;
         if (p->listaEventos != NULL) { conEventos++; }
         p = p->sig;
@@ -840,7 +993,7 @@ void consultaPorcentajeParticipacion() {
     float porcCon = (totalParticipantes > 0) ? (conEventos * 100.0f) / totalParticipantes : 0.0f;
     float porcSin = (totalParticipantes > 0) ? (sinEventos * 100.0f) / totalParticipantes : 0.0f;
 
-    cout << "9️⃣ Participacion estudiantil:\n";
+    cout << " Participacion estudiantil:\n";
     cout << "   - Con al menos 1 evento: " << conEventos << " (" << porcCon << "%)\n";
     cout << "   - Sin eventos: " << sinEventos << " (" << porcSin << "%)\n";
 }
@@ -903,19 +1056,72 @@ void reporteParticipantesPorApellido(bool ascendente) {
 }
 
 // 2) Eventos organizados por una persona X (Organizador)
+// 2) Eventos organizados por una persona X (DETALLADO)
 void reporteEventosPorOrganizador(int idOrganizador){
     Organizadores* o = buscarOrganizador(idOrganizador);
-    if(!o){ cout<<"2. Reporte: Organizador ID "<<idOrganizador<<" no encontrado.\n"; return; }
-    cout << "\n--- REPORTE 2: EVENTOS ORGANIZADOS POR: " << o->nombre << " ("<<o->departamento<<") ---\n";
-    if(!o->listaEventos){ cout<<"   No tiene eventos a cargo.\n"; return; }
-    enlaceEvento* aux = o->listaEventos;
-    while(aux){
-        eventos* ev = aux->refEvento;
-        cout << "ID: "<<ev->ID<<" | Nombre: "<<ev->nombre<<" | Fecha: "<<ev->fecha<<" | Tipo: "<<ev->tipo<<" | Lugar: "<<ev->lugar<<"\n";
-        aux = aux->sig;
+    if(!o){
+        cout << "2. Reporte: Organizador ID " << idOrganizador << " no encontrado.\n";
+        return;
+    }
+
+    cout << "\n--- REPORTE 2: EVENTOS A CARGO DE "
+         << o->nombre << " (" << o->departamento << ") ---\n";
+
+    if(!o->listaEventos){
+        cout << "   No tiene eventos a cargo.\n";
+        cout << "-----------------------------------------------------------------\n";
+        return;
+    }
+
+    int idx = 0;
+    for(enlaceEvento* le = o->listaEventos; le; le = le->sig){
+        eventos* ev = le->refEvento;
+        idx++;
+
+        cout << idx << ") ID: " << ev->ID << " | " << ev->nombre << "\n";
+        cout << "   Fecha: " << ev->fecha
+             << " | Lugar: " << ev->lugar
+             << " | Tipo: "  << ev->tipo << "\n";
+
+        cout << "   Categoria: "
+             << (ev->categoria ? ev->categoria->nombre : "(sin categoria)") << "\n";
+
+        // Co-organizadores del evento (si hay varios)
+        cout << "   Organizadores: " << organizadoresDelEvento(ev) << "\n";
+
+        // Recursos
+        cout << "   Recursos: ";
+        if(!ev->listaRecursos){
+            cout << "(ninguno)\n";
+        }else{
+            bool first = true;
+            for(enlaceRecurso* lr = ev->listaRecursos; lr; lr = lr->sig){
+                if(!first) cout << ", ";
+                cout << lr->refRecurso->nombre;
+                first = false;
+            }
+            cout << "\n";
+        }
+
+        // Participantes (lista + conteo)
+        int cnt = 0;
+        cout << "   Participantes: ";
+        if(!ev->listaParticipantes){
+            cout << "(ninguno)\n";
+        }else{
+            bool first = true;
+            for(enlaceParticipante* lp = ev->listaParticipantes; lp; lp = lp->sig){
+                if(!first) cout << ", ";
+                cout << lp->refParticipante->nombre;
+                first = false;
+                cnt++;
+            }
+            cout << "  [" << cnt << " inscritos]\n";
+        }
     }
     cout << "-----------------------------------------------------------------\n";
 }
+
 
 // 3) Eventos de una categoria X
 void reporteEventosPorCategoria(int idCategoria) {
@@ -1101,9 +1307,7 @@ void reporteEventosPorLugarFecha() {
 // ===================================================================
 
 void cargarDatosIniciales() {
-    cout << "\n=========================================\n";
-    cout << "         Cargando Datos Iniciales...       \n";
-    cout << "=========================================\n";
+
 
     // 1. Categorías
     insertarCategoriaFinal(101, "Academico", "Eventos centrados en conocimiento y ciencia.");
@@ -1154,8 +1358,7 @@ void cargarDatosIniciales() {
     registrarHistorial(4001, "2025-08-01", 2001, 1);
     registrarHistorial(4002, "2025-09-01", 2002, 1);
 
-    cout << "✔️ Carga de datos inicial completa con relaciones establecidas.\n";
-    cout << "=========================================\n";
+
 }
 
 // ===================================================================
@@ -1212,6 +1415,1078 @@ void imprimirTodosLosReportes() {
     cout << "---------------------------------------------\n";
 }
 
+
+// ===================================================
+// =============== INPUTS Y MOSTRAR ==================
+// ===================================================
+
+int leerEntero(const string& msg){
+    cout << msg;
+    int x;
+    while(!(cin >> x)){
+        cout << "Ingrese un numero valido: ";
+        cin.clear();
+        cin.ignore(10000,'\n');
+    }
+    cin.ignore(10000,'\n'); // limpiar \n restante
+    return x;
+}
+
+string leerLinea(const string& msg){
+    cout << msg;
+    string s;
+    getline(cin, s);
+    return s;
+}
+
+string organizadoresDelEvento(eventos* e){
+    if(!e) return "(error)";
+    string res;
+    bool first = true;
+
+    Organizadores* o = primeroOr;
+    while(o){
+        for(enlaceEvento* le = o->listaEventos; le; le = le->sig){
+            if(le->refEvento == e){
+                if(!first) res += ", ";
+                res += o->nombre;
+                first = false;
+                break; // ya encontramos este organizador para este evento
+            }
+        }
+        o = o->sig;
+    }
+    if(first) return "(ninguno)";
+    return res;
+}
+
+
+// Mostrar simples (usando las listas ya existentes)
+void mostrarEventos(){
+    cout << "\n--- EVENTOS (lista por fecha asc) ---\n";
+    if(!primeroE){
+        cout << "   (vacio)\n";
+        return;
+    }
+
+    eventos* e = primeroE;
+    while(e){
+        cout << "ID:" << e->ID
+             << " | " << e->nombre
+             << " | Fecha:" << e->fecha
+             << " | Lugar:" << e->lugar
+             << " | Tipo:" << e->tipo;
+
+        if(e->categoria)
+            cout << " | Cat:" << e->categoria->nombre;
+
+        // --- Recursos asignados a este evento ---
+        cout << "\n   Recursos: ";
+        if(!e->listaRecursos){
+            cout << "(ninguno)";
+        } else {
+            enlaceRecurso* lr = e->listaRecursos;
+            bool primero = true;
+            while(lr){
+                if(!primero) cout << ", ";
+                cout << lr->refRecurso->nombre;
+                primero = false;
+                lr = lr->sig;
+            }
+        }
+        cout << "\n   Organizadores: " << organizadoresDelEvento(e);
+
+        // --- (Opcional) Participantes inscritos en este evento ---
+        cout << "\n   Participantes: ";
+        if(!e->listaParticipantes){
+            cout << "no hay participantes en este evento";
+        } else {
+            enlaceParticipante* lp = e->listaParticipantes;
+            bool primero = true;
+            while(lp){
+                if(!primero) cout << ", ";
+                cout << lp->refParticipante->nombre;
+                primero = false;
+                lp = lp->sig;
+            }
+        }
+
+        cout << "\n";
+        e = e->sig;
+    }
+}
+
+
+void mostrarRecursos(){
+    cout << "\n--- RECURSOS (lista doble) ---\n";
+    if(!primeroR){ cout << "   (vacio)\n"; return; }
+    Recursos* r = primeroR;
+    while(r){
+        cout << "- " << r->nombre << " | " << r->descripcion << "\n";
+        r = r->sig;
+    }
+}
+
+void mostrarHistorial(){
+    cout << "\n--- HISTORIAL (circular por fecha) ---\n";
+    if(!primeroHistorial){ cout << "   (vacio)\n"; return; }
+    historial_eventos* h = primeroHistorial;
+    do{
+        cout << "ID:" << h->ID << " | Fecha:" << h->fecha;
+        if(h->refParticipante) cout << " | Est:" << h->refParticipante->nombre;
+        if(h->refEvento) cout << " | Ev:" << h->refEvento->nombre;
+        cout << "\n";
+        h = h->sig;
+    }while(h != primeroHistorial);
+}
+
+void mostrarCategorias(){
+    cout << "\n--- CATEGORIAS DISPONIBLES ---\n";
+    if(!primeroC){
+        cout << "   (vacio)\n";
+        return;
+    }
+    categorias* c = primeroC;
+    while(c){
+        cout << "ID:" << c->ID << " | " << c->nombre << " | " << c->descripcion << "\n";
+        c = c->sig;
+    }
+}
+
+bool yaInscritoEvento(participantes* p, eventos* e){
+    if(!p || !e) return false;
+    for(enlaceEventoParticipante* aux = p->listaEventos; aux; aux = aux->sig)
+        if(aux->refEvento == e) return true;
+    return false;
+}
+
+bool yaAsignadoRecursoEvento(int eventoID, const string& recursoNombre){
+    eventos* e = buscarEvento(eventoID);
+    Recursos* r = buscarRecurso(recursoNombre);
+    if(!e || !r) return false;
+    for(enlaceRecurso* lr = e->listaRecursos; lr; lr = lr->sig)
+        if(lr->refRecurso == r) return true;
+    return false;
+}
+
+bool agregarParticipanteEventoSiNoExiste(int eventoID, int partID){
+    eventos* e = buscarEvento(eventoID);
+    participantes* p = buscarParticipante(partID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!p){ cout<<" Participante no encontrado.\n"; return false; }
+    if(yaInscrito(p, e)){ cout<<" Ese participante ya esta inscrito en el evento.\n"; return false; }
+
+    inscribirParticipanteEvento(partID, eventoID);
+    cout<<" Participante agregado al evento.\n";
+    return true;
+}
+
+bool agregarRecursoEventoSiNoExiste(int eventoID, const string& recursoNombre){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!existeRecursoNombre(recursoNombre)){ cout<<" Recurso no encontrado.\n"; return false; }
+    if(yaAsignadoRecurso(eventoID, recursoNombre)){
+        cout<<" Ese recurso ya estaba asignado al evento.\n";
+        return false;
+    }
+
+    asignarRecursoEvento(eventoID, recursoNombre);
+    cout<<" Recurso agregado al evento.\n";
+    return true;
+}
+
+
+
+void menuReemplazosEvento(){
+    mostrarEventos();
+    int eid = leerEntero("ID del evento a modificar (reemplazos): ");
+    eventos* e = buscarEvento(eid);
+    if(!e){ cout<<" Evento no encontrado.\n"; return; }
+
+    int op;
+    do{
+        cout << "\n=== REEMPLAZOS / AGREGADOS EN EVENTO ===\n";
+        cout << "ID:" << e->ID
+             << " | Nombre:" << e->nombre
+             << " | Fecha:" << e->fecha
+             << " | Lugar:" << e->lugar
+             << " | Tipo:" << e->tipo
+             << " | Categoria:" << (e->categoria? e->categoria->nombre : "(sin)") << "\n";
+
+        cout << "1) Reemplazar NOMBRE (actual -> nuevo)\n";
+        cout << "2) Reemplazar FECHA (actual -> nueva)\n";
+        cout << "3) Reemplazar LUGAR (actual -> nuevo)\n";
+        cout << "4) Reemplazar TIPO (actual -> nuevo)\n";
+        cout << "5) Reemplazar CATEGORIA (actual -> nueva)\n";
+        cout << "6) Reemplazar ORGANIZADOR (ID actual -> ID nuevo)\n";
+        cout << "7) Reemplazar PARTICIPANTE (ID actual -> ID nuevo)\n";
+        cout << "8) Reemplazar RECURSO (nombre actual -> nombre nuevo)\n";
+        cout << "9) Agregar PARTICIPANTE (solo sumarlo)\n";
+        cout << "10) Agregar RECURSO (solo sumarlo)\n";
+        cout << "0) Volver\n> ";
+
+        if(!(cin>>op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            string act = leerLinea("Nombre ACTUAL: ");
+            string neu = leerLinea("Nombre NUEVO: ");
+            reemplazarNombreEvento(eid, act, neu);
+
+        }else if(op==2){
+            string act = leerLinea("Fecha ACTUAL (YYYY-MM-DD): ");
+            string neu = leerLinea("Fecha NUEVA (YYYY-MM-DD): ");
+            reemplazarFechaEvento(eid, act, neu);
+
+        }else if(op==3){
+            string act = leerLinea("Lugar ACTUAL: ");
+            string neu = leerLinea("Lugar NUEVO: ");
+            reemplazarLugarEvento(eid, act, neu);
+
+        }else if(op==4){
+            string act = leerLinea("Tipo ACTUAL: ");
+            string neu = leerLinea("Tipo NUEVO: ");
+            reemplazarTipoEvento(eid, act, neu);
+
+        }else if(op==5){
+            mostrarCategorias();
+            cout << "(Use -1 como NUEVA para quitar categoría)\n";
+            int cAct = leerEntero("ID categoria ACTUAL (-1 si no tiene): ");
+            int cNew = leerEntero("ID categoria NUEVA (-1 para quitar): ");
+            reemplazarCategoriaEvento(eid, cAct, cNew);
+
+        }else if(op==6){
+            mostrarOrganizadores();
+            int oAct = leerEntero("ID organizador ACTUAL: ");
+            int oNew = leerEntero("ID organizador NUEVO: ");
+            reemplazarOrganizadorEvento(eid, oAct, oNew);
+
+        }else if(op==7){
+            mostrarParticipantes();
+            int pAct = leerEntero("ID participante ACTUAL: ");
+            int pNew = leerEntero("ID participante NUEVO: ");
+            reemplazarParticipanteEvento(eid, pAct, pNew);
+
+        }else if(op==8){
+            mostrarRecursos();
+            string rAct = leerLinea("Nombre EXACTO de recurso ACTUAL: ");
+            string rNew = leerLinea("Nombre EXACTO de recurso NUEVO: ");
+            reemplazarRecursoEvento(eid, rAct, rNew);
+
+        }else if(op==9){
+            // Agregar participante (no reemplaza)
+            mostrarParticipantes();
+            int pid = leerEntero("ID de participante a AGREGAR: ");
+            agregarParticipanteEventoSiNoExiste(eid, pid);
+
+        }else if(op==10){
+            // Agregar recurso (no reemplaza)
+            mostrarRecursos();
+            string rn = leerLinea("Nombre EXACTO de recurso a AGREGAR: ");
+            agregarRecursoEventoSiNoExiste(eid, rn);
+        }
+
+    }while(op!=0);
+}
+
+
+
+// ===================================================
+// ================= SUBMENÚS CRUD ====================
+// ===================================================
+
+void crudEventos(){
+    int op;
+    do{
+        cout << "\n[CRUD Eventos]\n"
+             << "1) Insertar\n2) Modificar\n3) Eliminar\n4) Mostrar\n0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            insertarEventoInteractivo();
+
+        }else if(op==2){
+            menuReemplazosEvento();
+        }else if(op==3){
+            mostrarEventos();
+            int id = leerEntero("ID del evento a eliminar: ");
+            eliminarEvento(id);
+        }else if(op==4){
+            mostrarEventos();
+        }
+    }while(op!=0);
+}
+
+void mostrarOrganizadores(){
+    cout << "\n--- ORGANIZADORES DISPONIBLES ---\n";
+    if(!primeroOr){ cout << "   (vacio)\n"; return; }
+    Organizadores* o = primeroOr;
+    while(o){
+        cout << "ID:" << o->ID << " | " << o->nombre << " | " << o->departamento << "\n";
+        o = o->sig;
+    }
+}
+
+void mostrarParticipantes(){
+    cout << "\n--- PARTICIPANTES DISPONIBLES ---\n";
+    if(!primeroP){ cout << "   (vacio)\n"; return; }
+    participantes* p = primeroP;
+    while(p){
+        cout << "ID:" << p->ID << " | " << p->nombre << " | " << p->carrera << "\n";
+        p = p->sig;
+    }
+}
+
+void insertarEventoInteractivo(){
+    int id;
+    string n, f, l, t;
+
+    // ID: positivo y único
+    while(true){
+        mostrarEventos();
+        id = leerEntero("ID (positivo y unico): ");
+        if(id_invalido(id)){ cout<<" ID invalido.\n"; continue; }
+        if(existeEventoID(id)){ cout<<" ID de Evento repetido. Ingrese otro.\n"; continue; }
+        break;
+    }
+
+    // Nombre (no vacío)
+    do{
+        n = leerLinea("Nombre: ");
+        if(str_vacia(n)) cout<<" Nombre vacio.\n";
+    }while(str_vacia(n));
+
+    // Fecha (YYYY-MM-DD)
+    while(true){
+        f = leerLinea("Fecha (YYYY-MM-DD): ");
+        if(!esFechaValida(f)){ cout<<" Fecha invalida. Use formato YYYY-MM-DD.\n"; continue; }
+        break;
+    }
+
+    // Lugar (texto razonable)
+    while(true){
+        l = leerLinea("Lugar: ");
+        if(str_vacia(l) || !esTextoRazonable(l)){ cout<<" Lugar invalido. Debe ser texto.\n"; continue; }
+        break;
+    }
+
+    // Tipo (texto razonable)
+    while(true){
+        t = leerLinea("Tipo (Charla/Taller/Feria/Deportivo/...): ");
+        if(str_vacia(t) || !esTextoRazonable(t)){ cout<<" Tipo invalido. Debe ser texto.\n"; continue; }
+        break;
+    }
+
+    // Inserción (ordenado por fecha)
+    insertarEventoOrdenado(id, n, f, l, t);
+    cout << " Evento creado: " << n << " (" << f << ") en " << l << ".\n";
+
+    // ====== Categoria (opcional, pero valida que exista) ======
+    string catYN = leerLinea("¿Asociar categoria ahora? (s/n): ");
+    if(!catYN.empty() && (catYN[0]=='s' || catYN[0]=='S')){
+        if(!primeroC){
+            cout << " No hay categorias disponibles. Cree una primero.\n";
+        }else{
+            mostrarCategorias(); // <-- usa el void de categorías
+            int idc = leerEntero("ID Categoria (existente): ");
+            while(!existeCategoriaID(idc)){
+                cout << " Categoria no existe.\n";
+                idc = leerEntero("Ingrese un ID de categoria valido: ");
+            }
+            asignarCategoriaEvento(id, idc);
+            cout << " Categoria asignada.\n";
+        }
+    }
+
+    // ====== Organizador (REQUERIDO) ======
+    if(!primeroOr){
+        cout << " No hay organizadores disponibles. Cree uno primero desde CRUD.\n";
+    }else{
+        mostrarOrganizadores(); // <-- usa el void
+        int oid = leerEntero("ID Organizador (existente): ");
+        while(!existeOrganizadorID(oid)){
+            cout << " Organizador no existe.\n";
+            oid = leerEntero("Ingrese un ID de organizador valido: ");
+        }
+        asignarOrganizadorEvento(oid, id);
+        cout << " Organizador asignado.\n";
+    }
+
+    // ====== Participante (REQUERIDO) ======
+    if(!primeroP){
+        cout << " No hay participantes disponibles. Cree uno primero desde CRUD.\n";
+    }else{
+        mostrarParticipantes(); // <-- usa el void
+        int pid = leerEntero("ID Participante (existente): ");
+        while(!existeParticipanteID(pid)){
+            cout << " Participante no existe.\n";
+            pid = leerEntero("Ingrese un ID de participante valido: ");
+        }
+        inscribirParticipanteEvento(pid, id);
+        cout << " Participante inscrito al evento.\n";
+    }
+
+    // ====== Recurso (REQUERIDO) ======
+    if(!primeroR){
+        cout << " No hay recursos disponibles. Cree uno primero desde CRUD.\n";
+    }else{
+        mostrarRecursos(); // <-- ya existe y es void
+        string rn = leerLinea("Nombre EXACTO de un recurso existente: ");
+        while(!existeRecursoNombre(rn)){
+            cout << " Recurso no existe (revise mayusculas/acentos).\n";
+            rn = leerLinea("Ingrese un nombre de recurso valido: ");
+        }
+        // si quieres evitar duplicado: asignarRecursoEventoSiNoExiste(id, rn); (opcional)
+        asignarRecursoEvento(id, rn);
+        cout << " Recurso asignado al evento.\n";
+    }
+}
+
+
+void crudCategorias(){
+    int op;
+    do{
+        cout << "\n[CRUD Categorias]\n"
+             << "1) Insertar\n2) Modificar\n3) Eliminar\n4) Mostrar\n0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            mostrarCategorias();
+            int id = leerEntero("ID: ");
+            string n = leerLinea("Nombre: ");
+            string d = leerLinea("Descripcion: ");
+            insertarCategoriaFinal(id,n,d);
+        }else if(op==2){
+            mostrarCategorias();
+            int id = leerEntero("ID a modificar: ");
+            string n = leerLinea("Nuevo nombre: ");
+            string d = leerLinea("Nueva descripcion: ");
+            modificarCategoria(id,n,d);
+        }else if(op==3){
+            mostrarCategorias();
+            int id = leerEntero("ID a eliminar: ");
+            eliminarCategoria(id);
+        }else if(op==4){
+            cout << "\n--- CATEGORIAS ---\n";
+            if(!primeroC){ cout << "   (vacio)\n"; }
+            categorias* c = primeroC;
+            while(c){
+                cout << "ID:" << c->ID << " | " << c->nombre << " | " << c->descripcion << "\n";
+                c = c->sig;
+            }
+        }
+    }while(op!=0);
+}
+
+void crudParticipantes(){
+    int op;
+    do{
+        cout << "\n[CRUD Participantes]\n"
+             << "1) Insertar\n2) Modificar\n3) Eliminar\n4) Mostrar\n0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            mostrarParticipantes();
+            int id = leerEntero("ID: ");
+            string n = leerLinea("Nombre completo: ");
+            string c = leerLinea("Carrera: ");
+            insertarParticipante(id,n,c);
+        }else if(op==2){
+            mostrarParticipantes();
+            int id = leerEntero("ID a modificar: ");
+            string n = leerLinea("Nuevo nombre: ");
+            string c = leerLinea("Nueva carrera: ");
+            modificarParticipante(id,n,c);
+        }else if(op==3){
+            mostrarParticipantes();
+            int id = leerEntero("ID a eliminar: ");
+            eliminarParticipante(id);
+        }else if(op==4){
+            cout << "\n--- PARTICIPANTES ---\n";
+            if(!primeroP){ cout << "   (vacio)\n"; }
+            participantes* p = primeroP;
+            while(p){
+                cout << "ID:" << p->ID << " | " << p->nombre << " | " << p->carrera << "\n";
+                p = p->sig;
+            }
+        }
+    }while(op!=0);
+}
+
+void crudOrganizadores(){
+    int op;
+    do{
+        cout << "\n[CRUD Organizadores]\n"
+             << "1) Insertar\n2) Modificar\n3) Eliminar\n4) Mostrar\n0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            mostrarOrganizadores();
+            int id = leerEntero("ID: ");
+            string n = leerLinea("Nombre: ");
+            string d = leerLinea("Departamento: ");
+            insertarOrganizador(id,n,d);
+        }else if(op==2){
+            mostrarOrganizadores();
+            int id = leerEntero("ID a modificar: ");
+            string n = leerLinea("Nuevo nombre: ");
+            string d = leerLinea("Nuevo departamento: ");
+            modificarOrganizador(id,n,d);
+        }else if(op==3){
+            mostrarOrganizadores();
+            int id = leerEntero("ID a eliminar: ");
+            eliminarOrganizador(id);
+        }else if(op==4){
+            cout << "\n--- ORGANIZADORES ---\n";
+            if(!primeroOr){ cout << "   (vacio)\n"; }
+            Organizadores* o = primeroOr;
+            while(o){
+                cout << "ID:" << o->ID << " | " << o->nombre << " | " << o->departamento << "\n";
+                o = o->sig;
+            }
+        }
+    }while(op!=0);
+}
+
+void crudRecursos(){
+    int op;
+    do{
+        cout << "\n[CRUD Recursos]\n"
+             << "1) Insertar\n2) Modificar\n3) Eliminar\n4) Mostrar\n0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            mostrarRecursos();
+            string n = leerLinea("Nombre: ");
+            string d = leerLinea("Descripcion: ");
+            insertarRecurso(n,d);
+        }else if(op==2){
+            mostrarRecursos();
+            string actual = leerLinea("Nombre actual: ");
+            string n = leerLinea("Nuevo nombre: ");
+            string d = leerLinea("Nueva descripcion: ");
+            modificarRecurso(actual,n,d);
+        }else if(op==3){
+            mostrarRecursos();
+            string n = leerLinea("Nombre del recurso a eliminar: ");
+            eliminarRecurso(n);
+        }else if(op==4){
+            mostrarRecursos();
+        }
+    }while(op!=0);
+}
+
+void crudHistorial(){
+    int op;
+    do{
+        cout << "\n[CRUD Historial]\n"
+             << "1) Insertar (simple: solo ID de evento)\n"
+             << "2) Eliminar por ID\n"
+             << "3) Mostrar\n"
+             << "0) Volver\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        if(op==1){
+            registrarHistorialSoloConEvento();
+        }else if(op==2){
+            mostrarHistorial();
+            int id = leerEntero("ID historial a eliminar: ");
+            eliminarHistorial(id);
+        }else if(op==3){
+            mostrarHistorial();
+        }
+    }while(op!=0);
+}
+
+
+void menuCRUD(){
+    int op;
+    do{
+        cout << "\n================ SUBMENU CRUD ================\n"
+             << "1) Eventos\n"
+             << "2) Categorias\n"
+             << "3) Participantes\n"
+             << "4) Organizadores\n"
+             << "5) Recursos\n"
+             << "6) Historial\n"
+             << "0) Volver al menu principal\n"
+             << "==============================================\n> ";
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n');
+
+        switch(op){
+            case 1: crudEventos(); break;
+            case 2: crudCategorias(); break;
+            case 3: crudParticipantes(); break;
+            case 4: crudOrganizadores(); break;
+            case 5: crudRecursos(); break;
+            case 6: crudHistorial(); break;
+            case 0: break;
+            default: cout << "Opcion invalida.\n"; break;
+        }
+    }while(op!=0);
+}
+
+bool yaAsignadoOrganizador(int orgID, int eventoID){
+    Organizadores* o = buscarOrganizador(orgID);
+    eventos* e = buscarEvento(eventoID);
+    if(!o || !e) return false;
+    for(enlaceEvento* le=o->listaEventos; le; le=le->sig)
+        if(le->refEvento==e) return true;
+    return false;
+}
+
+bool yaInscrito(participantes* p, eventos* e){
+    if(!p || !e) return false;
+    for(enlaceEventoParticipante* aux=p->listaEventos; aux; aux=aux->sig)
+        if(aux->refEvento==e) return true;
+    return false;
+}
+
+bool yaAsignadoRecurso(int eventoID, const string& recursoNombre){
+    eventos* e = buscarEvento(eventoID);
+    Recursos* r = buscarRecurso(recursoNombre);
+    if(!e || !r) return false;
+    for(enlaceRecurso* lr=e->listaRecursos; lr; lr=lr->sig)
+        if(lr->refRecurso==r) return true;
+    return false;
+}
+
+void desasignarOrganizadorEvento(int orgID, int eventoID){
+    Organizadores* o = buscarOrganizador(orgID);
+    eventos* e = buscarEvento(eventoID);
+    if(!o || !e){ cout<<" Organizador/Evento no encontrado.\n"; return; }
+    enlaceEvento* prev=NULL; enlaceEvento* cur=o->listaEventos;
+    while(cur){
+        if(cur->refEvento==e){
+            if(prev) prev->sig = cur->sig; else o->listaEventos = cur->sig;
+            delete cur; cout<<" Organizador desasignado.\n"; return;
+        }
+        prev=cur; cur=cur->sig;
+    }
+    cout<<" Ese organizador no estaba asignado al evento.\n";
+}
+
+void desinscribirParticipanteEvento(int partID, int eventoID){
+    participantes* p = buscarParticipante(partID);
+    eventos* e = buscarEvento(eventoID);
+    if(!p || !e){ cout<<" Participante/Evento no encontrado.\n"; return; }
+
+    // quitar del evento
+    enlaceParticipante* prev=NULL; enlaceParticipante* cur=e->listaParticipantes;
+    while(cur){
+        if(cur->refParticipante==p){
+            if(prev) prev->sig = cur->sig; else e->listaParticipantes = cur->sig;
+            delete cur; break;
+        }
+        prev=cur; cur=cur->sig;
+    }
+    // quitar del participante
+    enlaceEventoParticipante* prev2=NULL; enlaceEventoParticipante* cur2=p->listaEventos;
+    while(cur2){
+        if(cur2->refEvento==e){
+            if(prev2) prev2->sig = cur2->sig; else p->listaEventos = cur2->sig;
+            delete cur2; break;
+        }
+        prev2=cur2; cur2=cur2->sig;
+    }
+    cout<<" Participante desinscrito.\n";
+}
+
+void desasignarRecursoEvento(int eventoID, const string& nombre){
+    eventos* e = buscarEvento(eventoID);
+    Recursos* r = buscarRecurso(nombre);
+    if(!e || !r){ cout<<" Evento/Recurso no encontrado.\n"; return; }
+    enlaceRecurso* prev=NULL; enlaceRecurso* cur=e->listaRecursos;
+    while(cur){
+        if(cur->refRecurso==r){
+            if(prev) prev->sig = cur->sig; else e->listaRecursos = cur->sig;
+            delete cur; cout<<" Recurso quitado del evento.\n"; return;
+        }
+        prev=cur; cur=cur->sig;
+    }
+    cout<<" Ese recurso no estaba asignado.\n";
+}
+bool reemplazarNombreEvento(int eventoID, const string& nombreActual, const string& nombreNuevo){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(e->nombre != nombreActual){ cout<<" El nombre actual no coincide.\n"; return false; }
+    if(str_vacia(nombreNuevo)){ cout<<" Nombre nuevo vacio.\n"; return false; }
+    return modificarEvento(e->ID, nombreNuevo, e->fecha, e->lugar, e->tipo);
+}
+
+bool reemplazarFechaEvento(int eventoID, const string& fechaActual, const string& fechaNueva){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(e->fecha != fechaActual){ cout<<" La fecha actual no coincide.\n"; return false; }
+    if(!esFechaValida(fechaNueva)){ cout<<" Fecha nueva invalida (YYYY-MM-DD).\n"; return false; }
+    // usar tu modificarEvento para reordenar por fecha si cambia
+    return modificarEvento(e->ID, e->nombre, fechaNueva, e->lugar, e->tipo);
+}
+
+bool reemplazarLugarEvento(int eventoID, const string& lugarActual, const string& lugarNuevo){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(e->lugar != lugarActual){ cout<<" El lugar actual no coincide.\n"; return false; }
+    if(str_vacia(lugarNuevo) || !esTextoRazonable(lugarNuevo)){ cout<<" Lugar nuevo invalido.\n"; return false; }
+    return modificarEvento(e->ID, e->nombre, e->fecha, lugarNuevo, e->tipo);
+}
+
+bool reemplazarTipoEvento(int eventoID, const string& tipoActual, const string& tipoNuevo){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(e->tipo != tipoActual){ cout<<" El tipo actual no coincide.\n"; return false; }
+    if(str_vacia(tipoNuevo) || !esTextoRazonable(tipoNuevo)){ cout<<" Tipo nuevo invalido.\n"; return false; }
+    return modificarEvento(e->ID, e->nombre, e->fecha, e->lugar, tipoNuevo);
+}
+bool reemplazarCategoriaEvento(int eventoID, int catActualID, int catNuevaID){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+
+    int actualID = e->categoria ? e->categoria->ID : -1;
+    if(actualID != catActualID){
+        cout<<" La categoria ACTUAL indicada no coincide (actual="<< actualID <<").\n";
+        return false;
+    }
+
+    // quitar enlace de la categoría actual (si hay)
+    if(e->categoria){
+        categorias* old = e->categoria;
+        enlaceCategoriaEvento* prev=NULL; enlaceCategoriaEvento* cur=old->listaEventos;
+        while(cur){
+            if(cur->refEvento==e){
+                if(prev) prev->sig = cur->sig; else old->listaEventos = cur->sig;
+                delete cur; break;
+            }
+            prev=cur; cur=cur->sig;
+        }
+        e->categoria = NULL;
+    }
+
+    if(catNuevaID == -1){
+        cout<<" Categoria quitada.\n";
+        return true;
+    }
+
+    categorias* nueva = buscarCategoria(catNuevaID);
+    if(!nueva){ cout<<" Categoria NUEVA no existe.\n"; return false; }
+
+    e->categoria = nueva;
+    enlaceCategoriaEvento* nuevo = new enlaceCategoriaEvento{e, nueva->listaEventos};
+    nueva->listaEventos = nuevo;
+    cout<<" Categoria reemplazada.\n";
+    return true;
+}
+
+bool reemplazarOrganizadorEvento(int eventoID, int orgActualID, int orgNuevoID){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!existeOrganizadorID(orgActualID)){ cout<<" Organizador ACTUAL no existe.\n"; return false; }
+    if(!existeOrganizadorID(orgNuevoID)){ cout<<" Organizador NUEVO no existe.\n"; return false; }
+    if(!yaAsignadoOrganizador(orgActualID, eventoID)){ cout<<" El organizador ACTUAL no esta asignado a este evento.\n"; return false; }
+
+    // si el nuevo ya está, solo quitar el actual
+    if(yaAsignadoOrganizador(orgNuevoID, eventoID)){
+        desasignarOrganizadorEvento(orgActualID, eventoID);
+        cout<<" El organizador nuevo ya estaba asignado; se removio el anterior.\n";
+        return true;
+    }
+    desasignarOrganizadorEvento(orgActualID, eventoID);
+    asignarOrganizadorEvento(orgNuevoID, eventoID);
+    cout<<" Organizador reemplazado.\n";
+    return true;
+}
+
+bool reemplazarParticipanteEvento(int eventoID, int partActualID, int partNuevoID){
+    eventos* e = buscarEvento(eventoID);
+    participantes* pAct = buscarParticipante(partActualID);
+    participantes* pNew = buscarParticipante(partNuevoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!pAct){ cout<<" Participante ACTUAL no existe.\n"; return false; }
+    if(!pNew){ cout<<" Participante NUEVO no existe.\n"; return false; }
+    if(!yaInscrito(pAct, e)){ cout<<" El participante ACTUAL no esta inscrito en este evento.\n"; return false; }
+
+    if(yaInscrito(pNew, e)){
+        desinscribirParticipanteEvento(partActualID, eventoID);
+        cout<<" El participante nuevo ya estaba inscrito; se removio el anterior.\n";
+        return true;
+    }
+    desinscribirParticipanteEvento(partActualID, eventoID);
+    inscribirParticipanteEvento(partNuevoID, eventoID);
+    cout<<" Participante reemplazado.\n";
+    return true;
+}
+
+bool reemplazarRecursoEvento(int eventoID, const string& recursoActual, const string& recursoNuevo){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!existeRecursoNombre(recursoActual)){ cout<<" Recurso ACTUAL no existe.\n"; return false; }
+    if(!existeRecursoNombre(recursoNuevo)){ cout<<" Recurso NUEVO no existe.\n"; return false; }
+    if(!yaAsignadoRecurso(eventoID, recursoActual)){ cout<<" El recurso ACTUAL no esta asignado a este evento.\n"; return false; }
+
+    if(yaAsignadoRecurso(eventoID, recursoNuevo)){
+        desasignarRecursoEvento(eventoID, recursoActual);
+        cout<<" El recurso nuevo ya estaba asignado; se removio el anterior.\n";
+        return true;
+    }
+    desasignarRecursoEvento(eventoID, recursoActual);
+    asignarRecursoEvento(eventoID, recursoNuevo);
+    cout<<" Recurso reemplazado.\n";
+    return true;
+}
+
+void insertarCategoriaInteractivo(){
+    int id;
+    string n, d;
+
+    // ID único y válido
+    while(true){
+        mostrarCategorias(); // para que el usuario vea cuáles existen
+        id = leerEntero("ID de categoria (positivo y unico): ");
+        if(id_invalido(id)){ cout << " ID invalido.\n"; continue; }
+        if(existeCategoriaID(id)){ cout << " ID de Categoria repetido. Ingrese otro.\n"; continue; }
+        break;
+    }
+
+    // Nombre no vacío y razonable
+    while(true){
+        n = leerLinea("Nombre: ");
+        if(str_vacia(n) || !esTextoRazonable(n)){
+            cout << " Nombre invalido.\n";
+            continue;
+        }
+        break;
+    }
+
+    // Descripción no vacía y razonable
+    while(true){
+        d = leerLinea("Descripcion: ");
+        if(str_vacia(d) || !esTextoRazonable(d)){
+            cout << " Descripcion invalida.\n";
+            continue;
+        }
+        break;
+    }
+
+    insertarCategoriaFinal(id, n, d);
+    cout << " Categoria creada.\n";
+}
+
+bool existeRegistroHistorial(int partID, int eventoID){
+    if(!primeroHistorial) return false;
+    historial_eventos* h = primeroHistorial;
+    do{
+        if(h->refParticipante && h->refEvento &&
+           h->refParticipante->ID == partID &&
+           h->refEvento->ID == eventoID){
+            return true;
+        }
+        h = h->sig;
+    }while(h && h != primeroHistorial);
+    return false;
+}
+
+int siguienteHistID(){
+    int maxID = 0;
+    if(primeroHistorial){
+        historial_eventos* h = primeroHistorial;
+        do{
+            if(h->ID > maxID) maxID = h->ID;
+            h = h->sig;
+        }while(h != primeroHistorial);
+    }
+    return maxID + 1;
+}
+
+// Registro simplificado: solo pides ID de evento
+void registrarHistorialSoloConEvento(){
+    mostrarEventos();
+    int eid = leerEntero("ID evento a registrar en historial: ");
+    eventos* ev = buscarEvento(eid);
+    if(!ev){ cout << " Evento no encontrado.\n"; return; }
+
+    // contar participantes y capturar si es unico
+    int count = 0;
+    participantes* unico = NULL;
+    for(enlaceParticipante* lp = ev->listaParticipantes; lp; lp = lp->sig){
+        count++;
+        if(count == 1) unico = lp->refParticipante;
+    }
+
+    if(count == 0){
+        cout << " Ese evento no tiene participantes inscritos.\n";
+        return;
+    }
+
+    participantes* elegido = NULL;
+
+    if(count == 1){
+        elegido = unico;
+        cout << " Seleccion automatica: " << elegido->nombre
+             << " (ID " << elegido->ID << ")\n";
+    }else{
+        cout << " Participantes de este evento:\n";
+        for(enlaceParticipante* lp = ev->listaParticipantes; lp; lp = lp->sig){
+            cout << "   ID:" << lp->refParticipante->ID
+                 << " | "   << lp->refParticipante->nombre
+                 << " | "   << lp->refParticipante->carrera << "\n";
+        }
+        int pid = leerEntero("ID del participante a registrar en historial: ");
+
+        bool ok = false;
+        for(enlaceParticipante* lp = ev->listaParticipantes; lp; lp = lp->sig){
+            if(lp->refParticipante->ID == pid){
+                elegido = lp->refParticipante;
+                ok = true; break;
+            }
+        }
+        if(!ok){
+            cout << " Ese ID no corresponde a un participante de este evento.\n";
+            return;
+        }
+    }
+
+    // evita duplicar (participante,evento)
+    if(existeRegistroHistorial(elegido->ID, ev->ID)){
+        cout << " Ya existe un registro de historial para ese participante en este evento.\n";
+        return;
+    }
+
+    int hid = siguienteHistID();
+    // fecha: usa la fecha del evento (o podrías pedir una manual si quieres)
+    registrarHistorial(hid, ev->fecha, elegido->ID, ev->ID);
+    cout << " Historial agregado (ID " << hid << ") para "
+         << elegido->nombre << " en \"" << ev->nombre << "\".\n";
+}
+
+// ======================== SUBMENU: REPORTES =========================
+void menuReportes(){
+    int op;
+    do{
+        cout << "\n==================== MENU DE REPORTES ====================\n"
+             << "1) Participantes ordenados por apellido (A/D)\n"
+             << "2) Eventos por ORGANIZADOR (ID)\n"
+             << "3) Eventos por CATEGORIA (ID)\n"
+             << "4) Recursos por EVENTO (ID)\n"
+             << "5) Eventos por LUGAR (texto exacto)\n"
+             << "6) Talleres por DEPARTAMENTO (texto exacto)\n"
+             << "7) Historial COMPLETO\n"
+             << "8) Organizadores SIN eventos\n"
+             << "0) Volver\n"
+             << "==========================================================\n> ";
+
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
+        cin.ignore(10000,'\n'); // limpiar salto de línea
+
+        switch(op){
+            case 1: {
+                int modo = leerEntero("Orden (1=Ascendente, 2=Descendente): ");
+                bool asc = (modo != 2);
+                reporteParticipantesPorApellido(asc);
+                break;
+            }
+            case 2: {
+                mostrarOrganizadores();
+                int idOrg = leerEntero("ID del ORGANIZADOR: ");
+                reporteEventosPorOrganizador(idOrg);
+                break;
+            }
+            case 3: {
+                mostrarCategorias();
+                int idCat = leerEntero("ID de la CATEGORIA: ");
+                reporteEventosPorCategoria(idCat);
+                break;
+            }
+            case 4: {
+                mostrarEventos();
+                int idEv = leerEntero("ID del EVENTO: ");
+                reporteRecursosPorEvento(idEv);
+                break;
+            }
+            case 5: {
+                // Te muestro los eventos para que veas los lugares disponibles
+                mostrarEventos();
+                string lugar = leerLinea("Lugar EXACTO a buscar: ");
+                reporteEventosPorLugar(lugar);
+                break;
+            }
+            case 6: {
+                // Te muestro organizadores para que veas los departamentos
+                mostrarOrganizadores();
+                string depto = leerLinea("Departamento EXACTO (tal como aparece): ");
+                reporteTalleresPorDepartamento(depto);
+                break;
+            }
+            case 7: {
+                reporteHistorialCompleto();
+                break;
+            }
+            case 8: {
+                reporteOrganizadoresSinEventos();
+                break;
+            }
+            case 0:
+                // volver
+                break;
+            default:
+                cout << "Opcion invalida.\n";
+                break;
+        }
+    }while(op != 0);
+}
+
+// ===== Menú de Consultas (9) =====
+void menuConsultas(){
+    int op;
+    do{
+        cout << "\n================= MENU CONSULTAS =================\n"
+             << "1) Participante con mas eventos\n"
+             << "2) Organizador con mas eventos\n"
+             << "3) Tipo de evento mas frecuente\n"
+             << "4) Categoria con mayor participacion\n"
+             << "5) Recurso mas utilizado\n"
+             << "6) Lugar con mas eventos (considera empates)\n"
+             << "7) Evento con mas participantes\n"
+             << "8) Organizador con mas categorias distintas\n"
+             << "9) Porcentaje de participacion estudiantil\n"
+             << "10) Ver TODAS las consultas\n"
+             << "0) Volver\n"
+             << "==================================================\n> ";
+
+        if(!(cin >> op)){ cin.clear(); cin.ignore(10000,'\n'); op = -1; }
+        cin.ignore(10000,'\n');
+
+        switch(op){
+            case 1:  consultaParticipanteMasEventos();      break;
+            case 2:  consultaOrganizadorMasEventos();       break;
+            case 3:  consultaTipoEventoFrecuente();         break;
+            case 4:  consultaCategoriaMayorParticipacion(); break;
+            case 5:  consultaRecursoMasUtilizado();         break;
+            case 6:  consultaLugarMasEventos();             break;
+            case 7:  consultaEventoMasParticipantes();      break;
+            case 8:  consultaOrganizadorMasCategorias();    break;
+            case 9:  consultaPorcentajeParticipacion();     break;
+            case 10: imprimirTodasLasConsultas();           break;
+            case 0:  break;
+            default: cout << "Opcion invalida.\n";          break;
+        }
+
+        if(op != 0){
+            cout << "\nPresione ENTER para continuar...";
+            cin.get();
+        }
+    }while(op != 0);
+}
+
+
+
+
 // ------------------- FUNCIÓN PRINCIPAL DEL PROGRAMA -------------------
 int main() {
     // Cargar datos
@@ -1222,15 +2497,15 @@ int main() {
         cout << "\n===================================================\n";
         cout << "      SISTEMA DE GESTION DE EVENTOS UNIVERSITARIOS   \n";
         cout << "===================================================\n";
-        cout << "1. Gestionar Listas (CRUD demo breve)\n";
-        cout << "2. Ver TODAS las Consultas (9 impresas de golpe)\n";
-        cout << "3. Ver TODOS los Reportes (8 impresos de golpe)\n";
+        cout << "1. Gestionar Listas \n";
+        cout << "2. Ver TODAS las Consultas \n";
+        cout << "3. Ver TODOS los Reportes \n";
         cout << "0. Salir del Programa\n";
         cout << "---------------------------------------------------\n";
         cout << "Ingrese su opcion: ";
 
         if (!(cin >> opcion)) {
-            cout << "\n❌ Entrada invalida. Por favor, ingrese un numero.\n";
+            cout << "\n Entrada invalida. Por favor, ingrese un numero.\n";
             cin.clear();
             cin.ignore(10000, '\n');
             continue;
@@ -1239,18 +2514,13 @@ int main() {
 
         switch (opcion) {
             case 1:
-                // Demo mínima de CRUD (puedes reemplazar por submenú real)
-                cout << "\n[CRUD demo] Modificar 'Taller de C++' (ID=2) -> lugar 'Laboratorio 5'...\n";
-                modificarEvento(2, "Taller de C++", "2025-10-25", "Laboratorio 5", "Taller");
-                cout << "[CRUD demo] Eliminar recurso 'Mesa de Sonido'...\n";
-                eliminarRecurso("Mesa de Sonido");
-                cout << "[CRUD demo] Listo.\n";
+                menuCRUD();   // <<<<<< reemplaza el demo por esta llamada
                 break;
             case 2:
-                imprimirTodasLasConsultas();
+                menuConsultas();
                 break;
             case 3:
-                imprimirTodosLosReportes();
+                menuReportes();   // antes llamabas a imprimirTodosLosReportes();
                 break;
             case 0:
                 cout << "\nSaliendo del sistema. ¡Adios!\n";
