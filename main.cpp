@@ -866,7 +866,7 @@ void consultaRecursoMasUtilizado() {
         cout << "Ningun recurso ha sido usado.\n";
 }
 
-// 6️⃣ Lugar que ha albergado más eventos (con empates)
+// 6️⃣ Lugar que ha albergado más eventos
 void consultaLugarMasEventos() {
     if (primeroE == NULL) { cout << " No hay eventos registrados.\n"; return; }
 
@@ -929,9 +929,7 @@ void consultaEventoMasParticipantes() {
     else
         cout << " No se encontraron eventos con participantes inscritos.\n";
 }
-
 // 8️⃣ Organizador que ha gestionado eventos en más categorías distintas
-// 8️⃣ Organizador que ha gestionado eventos en más categorías distintas (con empates + lista de categorías)
 void consultaOrganizadorMasCategorias() {
     if (primeroOr == NULL) { cout << " No hay organizadores registrados.\n"; return; }
 
@@ -1034,7 +1032,6 @@ void swapDataEventos(eventos* a, eventos* b) {
 }
 
 // 1) Participantes ordenados por apellido A/D
-// 1) Participantes ordenados por apellido A/D (AHORA MUESTRA SUS EVENTOS)
 void reporteParticipantesPorApellido(bool ascendente) {
     if (primeroP == NULL) {
         cout << "1. Reporte Participantes: Lista vacia.\n";
@@ -1365,17 +1362,16 @@ void cargarDatosIniciales() {
     insertarRecurso("Gimnasio", "Espacio techado donde se practican actividades fisicas.");
     insertarRecurso("Parlante","Dispositivo que permite emitir sonido");
     // 3. Eventos
-    insertarEventoOrdenado(2122, "Noche de Peliculas", "05-10-2025", "AULA-CUL1", "Entretenimiento");
-    insertarEventoOrdenado(2190, "Principios en Unity", "04-10-2025", "C-TEC", "Charla");
-    insertarEventoOrdenado(2129, "Torneo de Futbol Sala", "03-10-2025", "Gimnasio TEC", "Recreativa");
-    insertarEventoOrdenado(2134, "Torneo de Natacion", "02-10-2025", "Piscina TEC", "Recreativa");
-    insertarEventoOrdenado(2178, "Aprendiendo Folclore", "07-10-2025", "AULA-CUL2", "Taller");
+    insertarEventoOrdenado(2122, "Noche de Peliculas", "2025-10-05", "AULA-CUL1", "Entretenimiento");
+    insertarEventoOrdenado(2190, "Principios en Unity", "2025-10-04", "C-TEC", "Charla");
+    insertarEventoOrdenado(2129, "Torneo de Futbol Sala", "2025-10-03", "Gimnasio TEC", "Recreativa");
+    insertarEventoOrdenado(2134, "Torneo de Natacion", "2025-10-02", "Piscina TEC", "Recreativa");
+    insertarEventoOrdenado(2178, "Aprendiendo Folclore", "2025-10-07", "AULA-CUL2", "Taller");
 
     // 4. Participantes
     insertarParticipante(204560789, "Francisco Castillo", "Ingenieria en Computacion");
     insertarParticipante(207760654, "Dylan Mendez", "Agronomia");
     insertarParticipante(208770567, "Danny Gonzalez", "Ingenieria en Computacion");
-    insertarParticipante(2004, "Andres Diaz", "Derecho");
 
     // 5. Organizadores
     insertarOrganizador(207380123, "Javier Perez", "Culturales");
@@ -1408,11 +1404,11 @@ void cargarDatosIniciales() {
     asignarRecursoEvento(2134, "Piscina");
     asignarRecursoEvento(2178, "Parlante");
 
-    registrarHistorial(4001, "2025-08-01", 2001, 1);
-    registrarHistorial(4002, "2025-08-01", 2001, 2);
-    registrarHistorial(4003, "2025-08-01", 2001, 5);
-    registrarHistorial(4004, "2025-09-01", 2002, 2);
-    registrarHistorial(4005, "2025-10-01", 2003, 3);
+    registrarHistorial(2121, "2025-09-21", 208770567, 2178);
+    registrarHistorial(3434, "2025-09-21", 208770567, 2134);
+    registrarHistorial(4784, "2025-09-22", 207760654, 2129);
+    registrarHistorial(4444, "2025-09-22", 204560789, 2190);
+    registrarHistorial(5432, "2025-09-23", 204560789, 2122);
 
 }
 
