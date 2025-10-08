@@ -289,6 +289,8 @@ void desasignarRecursoEvento(int eventoID, const string& nombre);
 bool yaAsignadoOrganizador(int orgID, int eventoID);
 bool yaInscrito(participantes* p, eventos* e);
 bool yaAsignadoRecurso(int eventoID, const string& recursoNombre);
+bool agregarOrganizadorEventoSiNoExiste(int eventoID, int orgID);
+
 
 string organizadoresDelEvento(eventos* e);
 
@@ -983,7 +985,7 @@ void consultaPorcentajeParticipacion() {
     int totalParticipantes = 0; int conEventos = 0; participantes* p = primeroP;
 
     while (p != NULL) {
-        mostrarParticipantes();
+
         totalParticipantes++;
         if (p->listaEventos != NULL) { conEventos++; }
         p = p->sig;
@@ -993,6 +995,7 @@ void consultaPorcentajeParticipacion() {
     float porcCon = (totalParticipantes > 0) ? (conEventos * 100.0f) / totalParticipantes : 0.0f;
     float porcSin = (totalParticipantes > 0) ? (sinEventos * 100.0f) / totalParticipantes : 0.0f;
 
+    mostrarParticipantes();
     cout << " Participacion estudiantil:\n";
     cout << "   - Con al menos 1 evento: " << conEventos << " (" << porcCon << "%)\n";
     cout << "   - Sin eventos: " << sinEventos << " (" << porcSin << "%)\n";
@@ -1031,29 +1034,54 @@ void swapDataEventos(eventos* a, eventos* b) {
 }
 
 // 1) Participantes ordenados por apellido A/D
+// 1) Participantes ordenados por apellido A/D (AHORA MUESTRA SUS EVENTOS)
 void reporteParticipantesPorApellido(bool ascendente) {
-    if (primeroP == NULL) { cout << "1. Reporte Participantes: Lista vacía.\n"; return; }
-    bool intercambio; participantes *actual, *siguiente;
+    if (primeroP == NULL) {
+        cout << "1. Reporte Participantes: Lista vacia.\n";
+        return;
+    }
+
+    // --- ordenamiento por apellido (como lo tenías) ---
+    bool intercambio;
+    participantes *actual, *siguiente;
     do {
-        intercambio = false; actual = primeroP;
+        intercambio = false;
+        actual = primeroP;
         while (actual->sig != NULL) {
             siguiente = actual->sig;
-            string apActual = obtenerApellido(actual->nombre);
+            string apActual    = obtenerApellido(actual->nombre);
             string apSiguiente = obtenerApellido(siguiente->nombre);
-            bool condicion = ascendente ? (apActual > apSiguiente) : (apActual < apSiguiente);
-            if (condicion) { swapData(actual, siguiente); intercambio = true; }
+            bool condicion = ascendente ? (apActual > apSiguiente)
+                                        : (apActual < apSiguiente);
+            if (condicion) {
+                swapData(actual, siguiente);
+                intercambio = true;
+            }
             actual = actual->sig;
         }
     } while (intercambio);
 
+    // --- impresión DETALLADA con lista de eventos del participante ---
     cout << "\n--- REPORTE 1: PARTICIPANTES ORDENADOS POR APELLIDO ---\n";
     participantes* aux = primeroP;
     while (aux != NULL) {
-        cout << "ID: " << aux->ID << " | Nombre: " << aux->nombre << " | Carrera: " << aux->carrera << endl;
+        cout << "ID: " << aux->ID
+             << " | Nombre: " << aux->nombre
+             << " | Carrera: " << aux->carrera << "\n   Eventos: ";
+
+        int k = 0;
+        for (enlaceEventoParticipante* le = aux->listaEventos; le; le = le->sig) {
+            if (k++) cout << ", ";
+            cout << (le->refEvento ? le->refEvento->nombre : "(evento?)");
+        }
+        if (k == 0) cout << "(sin eventos)";
+        cout << "\n";
+
         aux = aux->sig;
     }
     cout << "---------------------------------------------------------\n";
 }
+
 
 // 2) Eventos organizados por una persona X (Organizador)
 // 2) Eventos organizados por una persona X (DETALLADO)
@@ -1124,20 +1152,37 @@ void reporteEventosPorOrganizador(int idOrganizador){
 
 
 // 3) Eventos de una categoria X
+// 3) Eventos de una categoria X (AHORA MUESTRA ORGANIZADOR/ES)
 void reporteEventosPorCategoria(int idCategoria) {
     categorias* cat = buscarCategoria(idCategoria);
-    if (cat == NULL) { cout << "3. Reporte Eventos: Categoria ID " << idCategoria << " no encontrada.\n"; return; }
+    if (cat == NULL) {
+        cout << "3. Reporte Eventos: Categoria ID " << idCategoria << " no encontrada.\n";
+        return;
+    }
+
     cout << "\n--- REPORTE 3: EVENTOS DE LA CATEGORIA: " << cat->nombre << " ---\n";
     enlaceCategoriaEvento* aux = cat->listaEventos;
-    if (aux == NULL) { cout << "   No hay eventos asociados.\n"; return; }
+    if (aux == NULL) {
+        cout << "   No hay eventos asociados.\n";
+        return;
+    }
+
     while (aux != NULL) {
         eventos* ev = aux->refEvento;
-        cout << "ID: " << ev->ID << " | Nombre: " << ev->nombre << " | Fecha: " << ev->fecha
-             << " | Tipo: " << ev->tipo << " | Lugar: " << ev->lugar << endl;
+        cout << "ID: " << ev->ID
+             << " | Nombre: " << ev->nombre
+             << " | Fecha: " << ev->fecha
+             << " | Tipo: "  << ev->tipo
+             << " | Lugar: " << ev->lugar << "\n";
+
+        // NUEVA línea solicitada por la rúbrica: organizador(es)
+        cout << "   Organizadores: " << organizadoresDelEvento(ev) << "\n";
+
         aux = aux->sig;
     }
     cout << "--------------------------------------------------------\n";
 }
+
 
 // 4) Recursos asignados a un evento X
 void reporteRecursosPorEvento(int idEvento) {
@@ -1310,54 +1355,64 @@ void cargarDatosIniciales() {
 
 
     // 1. Categorías
-    insertarCategoriaFinal(101, "Academico", "Eventos centrados en conocimiento y ciencia.");
-    insertarCategoriaFinal(102, "Cultural", "Actividades de arte, musica y folclore.");
-    insertarCategoriaFinal(103, "Deportivo", "Competiciones y juegos.");
+    insertarCategoriaFinal(1212, "Cultural", "Exploran lo que la gente hace, aborda campos como el arte,musica,costumbres etc.");
+    insertarCategoriaFinal(1414, "Academico", "Area especificada del conocimiento que abarca el conjunto de objetivos y competencias a desarrollar.");
+    insertarCategoriaFinal(1313, "Deportivo", "Cursos Academicos relacionados con el deporte y la actividad fisica.");
 
     // 2. Recursos
-    insertarRecurso("Proyector Epson", "Para presentaciones en salas grandes.");
-    insertarRecurso("Microfono Inalambrico", "Para oradores y panelistas.");
-    insertarRecurso("Mesa de Sonido", "Control de volumen y multiples entradas.");
-    insertarRecurso("Canastas de Baloncesto", "Equipo para partidos en cancha.");
-
+    insertarRecurso("Proyector", "Dispositivo que permite emitir imagenes e informacion visual.");
+    insertarRecurso("Piscina", "Espacio con agua para practicar deportes acuaticos.");
+    insertarRecurso("Gimnasio", "Espacio techado donde se practican actividades fisicas.");
+    insertarRecurso("Parlante","Dispositivo que permite emitir sonido");
     // 3. Eventos
-    insertarEventoOrdenado(1, "Charla de IA", "2025-11-10", "Auditorio A", "Charla");
-    insertarEventoOrdenado(2, "Taller de C++", "2025-10-25", "Laboratorio 3", "Taller");
-    insertarEventoOrdenado(3, "Festival de Musica", "2025-12-05", "Plaza Central", "Feria");
-    insertarEventoOrdenado(4, "Torneo de Futbol", "2025-09-15", "Cancha Principal", "Deportivo");
-    insertarEventoOrdenado(5, "Taller de IA", "2025-11-11", "Auditorio A", "Taller");
+    insertarEventoOrdenado(2122, "Noche de Peliculas", "05-10-2025", "AULA-CUL1", "Entretenimiento");
+    insertarEventoOrdenado(2190, "Principios en Unity", "04-10-2025", "C-TEC", "Charla");
+    insertarEventoOrdenado(2129, "Torneo de Futbol Sala", "03-10-2025", "Gimnasio TEC", "Recreativa");
+    insertarEventoOrdenado(2134, "Torneo de Natacion", "02-10-2025", "Piscina TEC", "Recreativa");
+    insertarEventoOrdenado(2178, "Aprendiendo Folclore", "07-10-2025", "AULA-CUL2", "Taller");
 
     // 4. Participantes
-    insertarParticipante(2001, "Maria Rojas", "Ing. Computacion");
-    insertarParticipante(2002, "Juan Perez", "Ing. Electronica");
-    insertarParticipante(2003, "Sofia Castro", "Arquitectura");
+    insertarParticipante(204560789, "Francisco Castillo", "Ingenieria en Computacion");
+    insertarParticipante(207760654, "Dylan Mendez", "Agronomia");
+    insertarParticipante(208770567, "Danny Gonzalez", "Ingenieria en Computacion");
     insertarParticipante(2004, "Andres Diaz", "Derecho");
 
     // 5. Organizadores
-    insertarOrganizador(301, "Luis Mena", "Departamento de TI");
-    insertarOrganizador(302, "Ana Solano", "Vida Estudiantil");
-    insertarOrganizador(303, "Carlos Vega", "Deportes");
+    insertarOrganizador(207380123, "Javier Perez", "Culturales");
+    insertarOrganizador(207120993, "Pedro Huertas", "Deportivas");
+    insertarOrganizador(23850472, "Lorena Lopez", "Academicas");
 
     // 6. Asignación de Relaciones
-    asignarCategoriaEvento(1, 101); asignarCategoriaEvento(2, 101); asignarCategoriaEvento(5, 101); // Academico
-    asignarCategoriaEvento(3, 102); // Cultural
-    asignarCategoriaEvento(4, 103); // Deportivo
+    asignarCategoriaEvento(2122, 1212);
+    asignarCategoriaEvento(2129, 1414);
+    asignarCategoriaEvento(2134, 1313);
+    asignarCategoriaEvento(2178, 1313);
 
-    asignarOrganizadorEvento(301, 1); asignarOrganizadorEvento(301, 2); asignarOrganizadorEvento(301, 5); // Luis gestiona 3 (Academico)
-    asignarOrganizadorEvento(302, 3); // Ana gestiona 1 (Cultural)
-    asignarOrganizadorEvento(303, 4); // Carlos gestiona 1 (Deportivo)
 
-    inscribirParticipanteEvento(2001, 1); inscribirParticipanteEvento(2001, 2); inscribirParticipanteEvento(2001, 5); // Maria (3 eventos)
-    inscribirParticipanteEvento(2002, 1); // Juan (1 evento)
-    inscribirParticipanteEvento(2003, 3); // Sofia (1 evento)
-    // 2004 (Andres) sin eventos
+    asignarOrganizadorEvento(207380123, 2122);
+    asignarOrganizadorEvento(207380123, 2178);
+    asignarOrganizadorEvento(207120993, 2129);
+    asignarOrganizadorEvento(207120993, 2134);
+    asignarOrganizadorEvento(23850472, 2190);
 
-    asignarRecursoEvento(1, "Proyector Epson"); asignarRecursoEvento(5, "Proyector Epson"); // Proyector (2 usos)
-    asignarRecursoEvento(3, "Microfono Inalambrico"); // Microfono (1 uso)
+    inscribirParticipanteEvento(204560789, 2122);
+    inscribirParticipanteEvento(204560789, 2190);
+    inscribirParticipanteEvento(207760654, 2129);
+    inscribirParticipanteEvento(208770567, 2134);
+    inscribirParticipanteEvento(208770567, 2178);
+
+
+    asignarRecursoEvento(2122, "Proyector");
+    asignarRecursoEvento(2190, "Proyector");
+    asignarRecursoEvento(2129, "Gimnasio");
+    asignarRecursoEvento(2134, "Piscina");
+    asignarRecursoEvento(2178, "Parlante");
 
     registrarHistorial(4001, "2025-08-01", 2001, 1);
-    registrarHistorial(4002, "2025-09-01", 2002, 1);
-
+    registrarHistorial(4002, "2025-08-01", 2001, 2);
+    registrarHistorial(4003, "2025-08-01", 2001, 5);
+    registrarHistorial(4004, "2025-09-01", 2002, 2);
+    registrarHistorial(4005, "2025-10-01", 2003, 3);
 
 }
 
@@ -1597,15 +1652,16 @@ bool agregarRecursoEventoSiNoExiste(int eventoID, const string& recursoNombre){
 
 
 
+
 void menuReemplazosEvento(){
     mostrarEventos();
-    int eid = leerEntero("ID del evento a modificar (reemplazos): ");
+    int eid = leerEntero("ID del evento a modificar (reemplazos/agregados): ");
     eventos* e = buscarEvento(eid);
     if(!e){ cout<<" Evento no encontrado.\n"; return; }
 
     int op;
     do{
-        cout << "\n=== REEMPLAZOS / AGREGADOS EN EVENTO ===\n";
+        cout << "\n=== MODIFICACIONES DE EVENTOS ===\n";
         cout << "ID:" << e->ID
              << " | Nombre:" << e->nombre
              << " | Fecha:" << e->fecha
@@ -1613,81 +1669,216 @@ void menuReemplazosEvento(){
              << " | Tipo:" << e->tipo
              << " | Categoria:" << (e->categoria? e->categoria->nombre : "(sin)") << "\n";
 
-        cout << "1) Reemplazar NOMBRE (actual -> nuevo)\n";
-        cout << "2) Reemplazar FECHA (actual -> nueva)\n";
-        cout << "3) Reemplazar LUGAR (actual -> nuevo)\n";
-        cout << "4) Reemplazar TIPO (actual -> nuevo)\n";
-        cout << "5) Reemplazar CATEGORIA (actual -> nueva)\n";
-        cout << "6) Reemplazar ORGANIZADOR (ID actual -> ID nuevo)\n";
-        cout << "7) Reemplazar PARTICIPANTE (ID actual -> ID nuevo)\n";
-        cout << "8) Reemplazar RECURSO (nombre actual -> nombre nuevo)\n";
-        cout << "9) Agregar PARTICIPANTE (solo sumarlo)\n";
-        cout << "10) Agregar RECURSO (solo sumarlo)\n";
+        cout << " -----REEMPLAZOS------\n";
+        cout << "1) Reemplazar NOMBRE (solo escribir el nuevo)\n";
+        cout << "2) Reemplazar FECHA (solo escribir la nueva)\n";
+        cout << "3) Reemplazar LUGAR (solo escribir el nuevo)\n";
+        cout << "4) Reemplazar TIPO (solo escribir el nuevo)\n";
+        cout << "5) Reemplazar CATEGORIA (mostrar actual -> elegir nueva)\n";
+        cout << "6) Reemplazar ORGANIZADOR (elegir asignado -> elegir no asignado)\n";
+        cout << "7) Reemplazar PARTICIPANTE (inscrito -> no inscrito)\n";
+        cout << "8) Reemplazar RECURSO (asignado -> no asignado)\n";
+        cout << "\n";
+        cout << "------AGREGACIONES Y ELIMINACIONES-----\n";
+        cout << "9) Agregar ORGANIZADOR (solo no asignados)\n";
+        cout << "10) Eliminar ORGANIZADOR (solo asignados)\n";
+        cout << "11) Agregar PARTICIPANTE (solo no inscritos)\n";
+        cout << "12) Eliminar PARTICIPANTE (solo inscritos)\n";
+        cout << "13) Agregar RECURSO (solo no asignados)\n";
+        cout << "14) Eliminar RECURSO (solo asignados)\n";
         cout << "0) Volver\n> ";
 
         if(!(cin>>op)){ cin.clear(); cin.ignore(10000,'\n'); op=-1; }
         cin.ignore(10000,'\n');
 
         if(op==1){
-            string act = leerLinea("Nombre ACTUAL: ");
+            cout << "Nombre ACTUAL: " << e->nombre << "\n";
             string neu = leerLinea("Nombre NUEVO: ");
-            reemplazarNombreEvento(eid, act, neu);
+            reemplazarNombreEvento(eid, e->nombre, neu);
+            e = buscarEvento(eid); // refrescar datos en pantalla
 
         }else if(op==2){
-            string act = leerLinea("Fecha ACTUAL (YYYY-MM-DD): ");
+            cout << "Fecha ACTUAL: " << e->fecha << "\n";
             string neu = leerLinea("Fecha NUEVA (YYYY-MM-DD): ");
-            reemplazarFechaEvento(eid, act, neu);
+            reemplazarFechaEvento(eid, e->fecha, neu);
+            e = buscarEvento(eid);
 
         }else if(op==3){
-            string act = leerLinea("Lugar ACTUAL: ");
+            cout << "Lugar ACTUAL: " << e->lugar << "\n";
             string neu = leerLinea("Lugar NUEVO: ");
-            reemplazarLugarEvento(eid, act, neu);
+            reemplazarLugarEvento(eid, e->lugar, neu);
+            e = buscarEvento(eid);
 
         }else if(op==4){
-            string act = leerLinea("Tipo ACTUAL: ");
+            cout << "Tipo ACTUAL: " << e->tipo << "\n";
             string neu = leerLinea("Tipo NUEVO: ");
-            reemplazarTipoEvento(eid, act, neu);
+            reemplazarTipoEvento(eid, e->tipo, neu);
+            e = buscarEvento(eid);
 
         }else if(op==5){
+            int cAct = e->categoria ? e->categoria->ID : -1;
+            cout << "Categoria ACTUAL: "
+                 << (e->categoria? e->categoria->nombre : "(sin)")
+                 << " (ID " << cAct << ")\n";
             mostrarCategorias();
-            cout << "(Use -1 como NUEVA para quitar categoría)\n";
-            int cAct = leerEntero("ID categoria ACTUAL (-1 si no tiene): ");
-            int cNew = leerEntero("ID categoria NUEVA (-1 para quitar): ");
+
+            int cNew = leerEntero("ID categoria NUEVA: ");
             reemplazarCategoriaEvento(eid, cAct, cNew);
+            e = buscarEvento(eid);
 
         }else if(op==6){
-            mostrarOrganizadores();
-            int oAct = leerEntero("ID organizador ACTUAL: ");
-            int oNew = leerEntero("ID organizador NUEVO: ");
+            // Reemplazar ORGANIZADOR
+            cout << "\nOrganizadores ASIGNADOS:\n";
+            bool hayAsig=false;
+            Organizadores* o=primeroOr;
+            while(o){
+                for(enlaceEvento* le=o->listaEventos; le; le=le->sig){
+                    if(le->refEvento==e){ cout<<"  ID:"<<o->ID<<" | "<<o->nombre<<"\n"; hayAsig=true; break; }
+                }
+                o=o->sig;
+            }
+            if(!hayAsig){ cout<<"  (ninguno)\n"; }
+
+            cout << "\nOrganizadores NO ASIGNADOS:\n";
+            bool hayNoAsig=false;
+            o=primeroOr;
+            while(o){
+                bool asignado=false;
+                for(enlaceEvento* le=o->listaEventos; le; le=le->sig){
+                    if(le->refEvento==e){ asignado=true; break; }
+                }
+                if(!asignado){ cout<<"  ID:"<<o->ID<<" | "<<o->nombre<<"\n"; hayNoAsig=true; }
+                o=o->sig;
+            }
+            if(!hayNoAsig){ cout<<"  (ninguno)\n"; }
+
+            int oAct = leerEntero("ID ORGANIZADOR ACTUAL (de la lista de asignados): ");
+            int oNew = leerEntero("ID ORGANIZADOR NUEVO (de la lista de no asignados): ");
             reemplazarOrganizadorEvento(eid, oAct, oNew);
 
         }else if(op==7){
-            mostrarParticipantes();
-            int pAct = leerEntero("ID participante ACTUAL: ");
-            int pNew = leerEntero("ID participante NUEVO: ");
+            // Reemplazar PARTICIPANTE
+            cout << "\nParticipantes INSCRITOS:\n";
+            bool hayIn=false;
+            for(enlaceParticipante* lp=e->listaParticipantes; lp; lp=lp->sig){
+                cout<<"  ID:"<<lp->refParticipante->ID<<" | "<<lp->refParticipante->nombre<<"\n"; hayIn=true;
+            }
+            if(!hayIn) cout<<"  (ninguno)\n";
+
+            cout << "\nParticipantes NO INSCRITOS:\n";
+            bool hayOut=false;
+            for(participantes* p=primeroP; p; p=p->sig){
+                bool ins=false;
+                for(enlaceParticipante* lp=e->listaParticipantes; lp; lp=lp->sig){
+                    if(lp->refParticipante==p){ ins=true; break; }
+                }
+                if(!ins){ cout<<"  ID:"<<p->ID<<" | "<<p->nombre<<"\n"; hayOut=true; }
+            }
+            if(!hayOut) cout<<"  (ninguno)\n";
+
+            int pAct = leerEntero("ID PARTICIPANTE ACTUAL (inscrito): ");
+            int pNew = leerEntero("ID PARTICIPANTE NUEVO (no inscrito): ");
             reemplazarParticipanteEvento(eid, pAct, pNew);
 
         }else if(op==8){
-            mostrarRecursos();
-            string rAct = leerLinea("Nombre EXACTO de recurso ACTUAL: ");
-            string rNew = leerLinea("Nombre EXACTO de recurso NUEVO: ");
+            // Reemplazar RECURSO
+            cout << "\nRecursos ASIGNADOS:\n";
+            bool hayRA=false;
+            for(enlaceRecurso* lr=e->listaRecursos; lr; lr=lr->sig){
+                cout<<"  - "<<lr->refRecurso->nombre<<"\n"; hayRA=true;
+            }
+            if(!hayRA) cout<<"  (ninguno)\n";
+
+            cout << "\nRecursos NO ASIGNADOS:\n";
+            bool hayRNA=false;
+            for(Recursos* r=primeroR; r; r=r->sig){
+                bool asig=false;
+                for(enlaceRecurso* lr=e->listaRecursos; lr; lr=lr->sig){
+                    if(lr->refRecurso==r){ asig=true; break; }
+                }
+                if(!asig){ cout<<"  - "<<r->nombre<<"\n"; hayRNA=true; }
+            }
+            if(!hayRNA) cout<<"  (ninguno)\n";
+
+            string rAct = leerLinea("Nombre EXACTO del RECURSO ACTUAL (asignado): ");
+            string rNew = leerLinea("Nombre EXACTO del RECURSO NUEVO (no asignado): ");
             reemplazarRecursoEvento(eid, rAct, rNew);
 
         }else if(op==9){
-            // Agregar participante (no reemplaza)
-            mostrarParticipantes();
-            int pid = leerEntero("ID de participante a AGREGAR: ");
-            agregarParticipanteEventoSiNoExiste(eid, pid);
+            // Agregar ORGANIZADOR
+            cout << "\nOrganizadores NO ASIGNADOS:\n";
+            bool hay=false;
+            for(Organizadores* o=primeroOr; o; o=o->sig){
+                if(!yaAsignadoOrganizador(o->ID,eid)){
+                    cout<<"  ID:"<<o->ID<<" | "<<o->nombre<<"\n"; hay=true;
+                }
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            int oid = leerEntero("ID a AGREGAR: ");
+            agregarOrganizadorEventoSiNoExiste(eid, oid);
 
         }else if(op==10){
-            // Agregar recurso (no reemplaza)
-            mostrarRecursos();
-            string rn = leerLinea("Nombre EXACTO de recurso a AGREGAR: ");
+            // Eliminar ORGANIZADOR
+            cout << "\nOrganizadores ASIGNADOS:\n";
+            bool hay=false;
+            for(Organizadores* o=primeroOr; o; o=o->sig){
+                if(yaAsignadoOrganizador(o->ID,eid)){
+                    cout<<"  ID:"<<o->ID<<" | "<<o->nombre<<"\n"; hay=true;
+                }
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            int oid = leerEntero("ID a ELIMINAR: ");
+            desasignarOrganizadorEvento(oid, eid);
+
+        }else if(op==11){
+            // Agregar PARTICIPANTE
+            cout << "\nParticipantes NO INSCRITOS:\n";
+            bool hay=false;
+            for(participantes* p=primeroP; p; p=p->sig){
+                if(!yaInscrito(p,e)){ cout<<"  ID:"<<p->ID<<" | "<<p->nombre<<"\n"; hay=true; }
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            int pid = leerEntero("ID a AGREGAR: ");
+            agregarParticipanteEventoSiNoExiste(eid, pid);
+
+        }else if(op==12){
+            // Eliminar PARTICIPANTE
+            cout << "\nParticipantes INSCRITOS:\n";
+            bool hay=false;
+            for(enlaceParticipante* lp=e->listaParticipantes; lp; lp=lp->sig){
+                cout<<"  ID:"<<lp->refParticipante->ID<<" | "<<lp->refParticipante->nombre<<"\n"; hay=true;
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            int pid = leerEntero("ID a ELIMINAR: ");
+            desinscribirParticipanteEvento(pid, eid);
+
+        }else if(op==13){
+            // Agregar RECURSO
+            cout << "\nRecursos NO ASIGNADOS:\n";
+            bool hay=false;
+            for(Recursos* r=primeroR; r; r=r->sig){
+                if(!yaAsignadoRecurso(eid, r->nombre)){ cout<<"  - "<<r->nombre<<"\n"; hay=true; }
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            string rn = leerLinea("Nombre EXACTO del recurso a AGREGAR: ");
             agregarRecursoEventoSiNoExiste(eid, rn);
+
+        }else if(op==14){
+            // Eliminar RECURSO
+            cout << "\nRecursos ASIGNADOS:\n";
+            bool hay=false;
+            for(enlaceRecurso* lr=e->listaRecursos; lr; lr=lr->sig){
+                cout<<"  - "<<lr->refRecurso->nombre<<"\n"; hay=true;
+            }
+            if(!hay) cout<<"  (ninguno)\n";
+            string rn = leerLinea("Nombre EXACTO del recurso a ELIMINAR: ");
+            desasignarRecursoEvento(eid, rn);
         }
 
     }while(op!=0);
 }
+
+
 
 
 
@@ -1778,68 +1969,99 @@ void insertarEventoInteractivo(){
         break;
     }
 
+
+
+    // ====== Categoria (opcional, pero valida que exista) ======
+    if(!primeroC){
+        cout << " No hay categorias disponibles. Cree una primero.\n";
+    } else {
+        mostrarCategorias(); // <-- usa el void de categorías
+        int idc = leerEntero("ID Categoria (existente): ");
+        while(!existeCategoriaID(idc)){
+            cout << " Categoria no existe.\n";
+            idc = leerEntero("Ingrese un ID de categoria valido: ");
+        }
+        asignarCategoriaEvento(id, idc);
+        cout << " Categoria asignada.\n";
+    }
+
     // Inserción (ordenado por fecha)
     insertarEventoOrdenado(id, n, f, l, t);
     cout << " Evento creado: " << n << " (" << f << ") en " << l << ".\n";
 
-    // ====== Categoria (opcional, pero valida que exista) ======
-    string catYN = leerLinea("¿Asociar categoria ahora? (s/n): ");
-    if(!catYN.empty() && (catYN[0]=='s' || catYN[0]=='S')){
-        if(!primeroC){
-            cout << " No hay categorias disponibles. Cree una primero.\n";
-        }else{
-            mostrarCategorias(); // <-- usa el void de categorías
-            int idc = leerEntero("ID Categoria (existente): ");
-            while(!existeCategoriaID(idc)){
-                cout << " Categoria no existe.\n";
-                idc = leerEntero("Ingrese un ID de categoria valido: ");
-            }
-            asignarCategoriaEvento(id, idc);
-            cout << " Categoria asignada.\n";
-        }
-    }
-
     // ====== Organizador (REQUERIDO) ======
-    if(!primeroOr){
-        cout << " No hay organizadores disponibles. Cree uno primero desde CRUD.\n";
-    }else{
-        mostrarOrganizadores(); // <-- usa el void
-        int oid = leerEntero("ID Organizador (existente): ");
-        while(!existeOrganizadorID(oid)){
-            cout << " Organizador no existe.\n";
-            oid = leerEntero("Ingrese un ID de organizador valido: ");
+    // ====== (Opcional) Organizadores ======
+    string orgYN = leerLinea(" Asociar organizadores ahora? (s/n): ");
+    if(!orgYN.empty() && (orgYN[0]=='s' || orgYN[0]=='S')){
+        if(!primeroOr){
+            cout << " No hay organizadores disponibles. Cree uno primero.\n";
+        }else{
+            string otro = "s";
+            while(!otro.empty() && (otro[0]=='s' || otro[0]=='S')){
+                mostrarOrganizadores();
+                int oid = leerEntero("ID Organizador (existente): ");
+                if(!existeOrganizadorID(oid)){
+                    cout << " Organizador no existe.\n";
+                }else if(yaAsignadoOrganizador(oid, id)){
+                    cout << " Ese organizador ya esta asignado a este evento.\n";
+                }else{
+                    asignarOrganizadorEvento(oid, id);
+                    cout << " Organizador asignado.\n";
+                }
+                otro = leerLinea("Agregar otro organizador? (s/n): ");
+            }
         }
-        asignarOrganizadorEvento(oid, id);
-        cout << " Organizador asignado.\n";
     }
 
     // ====== Participante (REQUERIDO) ======
-    if(!primeroP){
-        cout << " No hay participantes disponibles. Cree uno primero desde CRUD.\n";
-    }else{
-        mostrarParticipantes(); // <-- usa el void
-        int pid = leerEntero("ID Participante (existente): ");
-        while(!existeParticipanteID(pid)){
-            cout << " Participante no existe.\n";
-            pid = leerEntero("Ingrese un ID de participante valido: ");
+    // ====== (Opcional) Participantes ======
+    string partYN = leerLinea("Inscribir participantes ahora? (s/n): ");
+    if(!partYN.empty() && (partYN[0]=='s' || partYN[0]=='S')){
+        if(!primeroP){
+            cout << " No hay participantes disponibles. Cree uno primero.\n";
+        }else{
+            // Para validar duplicados necesitamos el puntero del evento recién creado
+            eventos* evPtr = buscarEvento(id);
+            string otro = "s";
+            while(!otro.empty() && (otro[0]=='s' || otro[0]=='S')){
+                mostrarParticipantes();
+                int pid = leerEntero("ID Participante (existente): ");
+                participantes* pPtr = buscarParticipante(pid);
+                if(!pPtr){
+                    cout << " Participante no existe.\n";
+                }else if(yaInscrito(pPtr, evPtr)){
+                    cout << " Ese participante ya esta inscrito en este evento.\n";
+                }else{
+                    inscribirParticipanteEvento(pid, id);
+                    cout << " Participante inscrito al evento.\n";
+                }
+                otro = leerLinea("Inscribir otro participante? (s/n): ");
+            }
         }
-        inscribirParticipanteEvento(pid, id);
-        cout << " Participante inscrito al evento.\n";
     }
 
+
     // ====== Recurso (REQUERIDO) ======
-    if(!primeroR){
-        cout << " No hay recursos disponibles. Cree uno primero desde CRUD.\n";
-    }else{
-        mostrarRecursos(); // <-- ya existe y es void
-        string rn = leerLinea("Nombre EXACTO de un recurso existente: ");
-        while(!existeRecursoNombre(rn)){
-            cout << " Recurso no existe (revise mayusculas/acentos).\n";
-            rn = leerLinea("Ingrese un nombre de recurso valido: ");
+    string recYN = leerLinea("Asignar recursos ahora? (s/n): ");
+    if(!recYN.empty() && (recYN[0]=='s' || recYN[0]=='S')){
+        if(!primeroR){
+            cout << " No hay recursos disponibles. Cree uno primero.\n";
+        }else{
+            string otro = "s";
+            while(!otro.empty() && (otro[0]=='s' || otro[0]=='S')){
+                mostrarRecursos();
+                string rn = leerLinea("Nombre EXACTO del recurso (existente): ");
+                if(!existeRecursoNombre(rn)){
+                    cout << " Recurso no existe (revise mayusculas/acentos).\n";
+                }else if(yaAsignadoRecurso(id, rn)){
+                    cout << " Ese recurso ya esta asignado a este evento.\n";
+                }else{
+                    asignarRecursoEvento(id, rn);
+                    cout << " Recurso asignado al evento.\n";
+                }
+                otro = leerLinea("Asignar otro recurso? (s/n): ");
+            }
         }
-        // si quieres evitar duplicado: asignarRecursoEventoSiNoExiste(id, rn); (opcional)
-        asignarRecursoEvento(id, rn);
-        cout << " Recurso asignado al evento.\n";
     }
 }
 
@@ -2484,6 +2706,18 @@ void menuConsultas(){
     }while(op != 0);
 }
 
+bool agregarOrganizadorEventoSiNoExiste(int eventoID, int orgID){
+    eventos* e = buscarEvento(eventoID);
+    if(!e){ cout<<" Evento no encontrado.\n"; return false; }
+    if(!existeOrganizadorID(orgID)){ cout<<" Organizador no encontrado.\n"; return false; }
+    if(yaAsignadoOrganizador(orgID, eventoID)){
+        cout<<" Ese organizador ya esta asignado al evento.\n";
+        return false;
+    }
+    asignarOrganizadorEvento(orgID, eventoID);
+    cout<<" Organizador agregado al evento.\n";
+    return true;
+}
 
 
 
