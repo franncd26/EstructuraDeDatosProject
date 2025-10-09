@@ -2,9 +2,6 @@
 #include <string>
 using namespace std;
 
-// ===================================================================
-// ========================= ESTRUCTURAS DE DATOS ====================
-// ===================================================================
 
 // Prototipos de Structs para referencias mutuas
 struct enlaceEvento;
@@ -17,6 +14,11 @@ struct enlaceCategoriaEvento;
 struct enlaceEventoParticipante;
 
 // ------------------- Recursos (lista doble) -------------------
+/*
+  Representa un recurso físico o lógico utilizado por eventos.
+  Lista doblemente enlazada: permite recorrer adelante/atrás.
+  Complejidad de inserción al final: O(n).
+*/
 struct Recursos {
     string nombre;
     string descripcion;
@@ -31,6 +33,11 @@ struct Recursos {
 }*primeroR = NULL;
 
 // ------------------- Organizadores (lista doble) -------------------
+/*
+  Representa a personas que organizan eventos.
+  Cada organizador mantiene una sublista (enlaceEvento*) que referencia
+  los eventos a su cargo. Lista doble para la colección principal.
+*/
 struct Organizadores {
     int ID;
     string nombre;
@@ -49,6 +56,13 @@ struct Organizadores {
 }*primeroOr = NULL;
 
 // ------------------- Eventos (lista simple) -------------------
+/*
+  Nodo base del sistema. Lista simple ORDENADA por fecha (string YYYY-MM-DD).
+  Relaciones:
+    - categoria: puntero a 'categorias' (UNO a UNO).
+    - listaRecursos: sublista de recursos asignados.
+    - listaParticipantes: sublista de participantes inscritos.
+*/
 struct eventos {
     int ID;
     string nombre;
@@ -74,6 +88,10 @@ struct eventos {
 }*primeroE = NULL;
 
 // ------------------- Participantes (lista doble) -------------------
+/*
+  Representa a estudiantes/participantes. Lista doble.
+  'listaEventos' mantiene una sublista de enlaces a eventos donde está inscrito.
+*/
 struct participantes {
     int ID;
     string nombre;
@@ -92,6 +110,9 @@ struct participantes {
 }*primeroP = NULL;
 
 // ------------------- Categorías (lista simple) -------------------
+/*
+  Agrupan eventos por temática. Cada categoría conserva sublista de sus eventos.
+*/
 struct categorias {
     int ID;
     string nombre;
@@ -108,6 +129,10 @@ struct categorias {
 }*primeroC = NULL;
 
 // ------------------- Historial de eventos (lista circular) -------------------
+/*
+  Registro de (participante, evento, fecha) ya realizados o inscritos.
+  Lista circular: facilita recorridos cíclicos. Inserción ordenada por fecha (string).
+*/
 struct historial_eventos {
     int ID;
     string fecha;
@@ -124,6 +149,9 @@ struct historial_eventos {
 }*primeroHistorial = NULL;
 
 // ------------------- Enlaces para las relaciones -------------------
+/*
+  Estructuras de "arista" para modelar relaciones N:M sin duplicar nodos.
+*/
 struct enlaceEvento {
     eventos* refEvento;
     enlaceEvento* sig = NULL;
@@ -153,7 +181,7 @@ struct enlaceEventoParticipante {
 // ====================== PROTOTIPOS DE FUNCIONES ====================
 // ===================================================================
 
-// Funciones de busqueda
+// Funciones de busqueda (recorren listas, O(n))
 eventos* buscarEvento(int id);
 categorias* buscarCategoria(int id);
 participantes* buscarParticipante(int id);
@@ -172,20 +200,16 @@ bool existeRecursoNombre(const string& n);
 bool esFechaValida(const string& f);
 bool esTextoRazonable(const string& s);
 
-
+// Wrappers de inserción con validación interactiva
 void insertarEventoInteractivo(); // wrapper que valida en bucle
-
 void insertarCategoriaInteractivo();
 
+// Historial
 bool existeRegistroHistorial(int partID, int eventoID);
 int siguienteHistID();
 void registrarHistorialSoloConEvento();
 
-
-
-
-
-// Funciones CRUD (Insertar)
+// Funciones CRUD (Insertar) - cada una valida y conecta a su lista
 void insertarEventoOrdenado(int id, string n, string f, string l, string t);
 void insertarCategoriaFinal(int id, string n, string d);
 void insertarParticipante(int id, string n, string c);
@@ -193,7 +217,7 @@ void insertarOrganizador(int id, string n, string d);
 void insertarRecurso(string n, string d);
 void insertarHistorialOrdenado(int id, string f, participantes* p, eventos* e);
 
-// ==== MODIFICAR ====
+// ==== MODIFICAR ==== (devuelven true/false según éxito)
 bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevoLugar, string nuevoTipo);
 bool modificarCategoria(int id, string nuevoNombre, string nuevaDesc);
 bool modificarParticipante(int id, string nuevoNombre, string nuevaCarrera);
@@ -208,7 +232,7 @@ bool eliminarOrganizador(int id);
 bool eliminarRecurso(const string& nombre);
 bool eliminarHistorial(int id); // opcional
 
-// Funciones de Relación
+// Funciones de Relación (crean enlaces en sublistas)
 void asignarOrganizadorEvento(int orgID, int eventoID);
 void inscribirParticipanteEvento(int partID, int eventoID);
 void asignarRecursoEvento(int eventoID, string recursoNombre);
@@ -223,9 +247,7 @@ void mostrarCategorias();
 void mostrarOrganizadores();
 void mostrarParticipantes();
 
-
-
-// Funciones de Consultas (9)
+// Funciones de Consultas (9) — KPIs y agregaciones
 void consultaParticipanteMasEventos();
 void consultaOrganizadorMasEventos();
 void consultaTipoEventoFrecuente();
@@ -238,15 +260,15 @@ void consultaPorcentajeParticipacion();
 
 // Funciones de Reportes (8 de la rúbrica + auxiliares existentes)
 void reporteParticipantesPorApellido(bool ascendente); // 1
-void reporteEventosPorOrganizador(int idOrganizador);  // 2 (nuevo exacto)
+void reporteEventosPorOrganizador(int idOrganizador);  // 2
 void reporteEventosPorCategoria(int idCategoria);      // 3
 void reporteRecursosPorEvento(int idEvento);           // 4
-void reporteEventosPorLugar(string lugarX);            // 5 (nuevo exacto)
-void reporteTalleresPorDepartamento(string deptoX);    // 6 (nuevo exacto)
-void reporteHistorialCompleto();                       // 7 (nuevo exacto)
-void reporteOrganizadoresSinEventos();                 // 8 (nuevo exacto)
+void reporteEventosPorLugar(string lugarX);            // 5
+void reporteTalleresPorDepartamento(string deptoX);    // 6
+void reporteHistorialCompleto();                       // 7
+void reporteOrganizadoresSinEventos();                 // 8
 
-// Reportes extra que ya tenías (los dejamos como utilitarios)
+// Reportes extra utilitarios
 void reporteEventosPorFecha(string fechaBuscada);
 void reporteParticipantesMultiInscripcion();
 void reporteOrganizadoresPorDepartamento(string deptoBuscado);
@@ -269,14 +291,13 @@ bool agregarRecursoEventoSiNoExiste(int eventoID, const string& recursoNombre);
 bool yaInscritoEvento(participantes* p, eventos* e);
 bool yaAsignadoRecursoEvento(int eventoID, const string& recursoNombre);
 
-
-// Reemplazos de campos básicos
+// Reemplazos de campos básicos (utilizan modificarEvento y validaciones)
 bool reemplazarNombreEvento(int eventoID, const string& nombreActual, const string& nombreNuevo);
 bool reemplazarFechaEvento(int eventoID, const string& fechaActual, const string& fechaNueva);
 bool reemplazarLugarEvento(int eventoID, const string& lugarActual, const string& lugarNuevo);
 bool reemplazarTipoEvento(int eventoID, const string& tipoActual, const string& tipoNuevo);
 
-// Reemplazos de relaciones
+// Reemplazos de relaciones (manejan enlaces y consistencia)
 bool reemplazarCategoriaEvento(int eventoID, int catActualID, int catNuevaID); // usar -1 para quitar
 bool reemplazarOrganizadorEvento(int eventoID, int orgActualID, int orgNuevoID);
 bool reemplazarParticipanteEvento(int eventoID, int partActualID, int partNuevoID);
@@ -291,15 +312,17 @@ bool yaInscrito(participantes* p, eventos* e);
 bool yaAsignadoRecurso(int eventoID, const string& recursoNombre);
 bool agregarOrganizadorEventoSiNoExiste(int eventoID, int orgID);
 
-
 string organizadoresDelEvento(eventos* e);
-
 
 // ===================================================================
 // ======================== IMPLEMENTACIÓN CRUD ======================
 // ===================================================================
 
 // Implementaciones de Búsqueda
+/*
+  Todas estas funciones recorren linealmente la lista correspondiente (O(n))
+  y retornan el puntero al nodo si lo encuentran; en caso contrario, NULL.
+*/
 eventos* buscarEvento(int id) {
     eventos* aux = primeroE;
     while (aux != NULL) {
@@ -342,9 +365,11 @@ Recursos* buscarRecurso(string n) {
 }
 
 // ==== Validaciones / Exists ====
+// str_vacia: true si solo hay espacios/saltos; id_invalido: IDs positivos requeridos
 bool str_vacia(const string& s){ return s.find_first_not_of(" \t\n\r") == string::npos; }
 bool id_invalido(int id){ return id <= 0; }
 
+// Comprobaciones de existencia (reutilizan las búsquedas)
 bool existeEventoID(int id){ return buscarEvento(id) != NULL; }
 bool existeCategoriaID(int id){ return buscarCategoria(id) != NULL; }
 bool existeParticipanteID(int id){ return buscarParticipante(id) != NULL; }
@@ -352,6 +377,12 @@ bool existeOrganizadorID(int id){ return buscarOrganizador(id) != NULL; }
 bool existeRecursoNombre(const string& n){ return buscarRecurso(n) != NULL; }
 
 // Implementación de Inserción (con validaciones)
+/*
+  insertarEventoOrdenado:
+    - Valida datos de entrada.
+    - Inserta en la lista de eventos manteniendo el ORDEN por FECHA.
+    - Complejidad: O(n) al buscar el punto de inserción.
+*/
 void insertarEventoOrdenado(int id, string n, string f, string l, string t) {
     if (id_invalido(id)) { cout << " ID invalido al insertar Evento.\n"; return; }
     if (str_vacia(n))    { cout << " Nombre de evento vacio.\n"; return; }
@@ -368,6 +399,11 @@ void insertarEventoOrdenado(int id, string n, string f, string l, string t) {
     nuevo->sig = actual->sig; actual->sig = nuevo;
 }
 
+/*
+  insertarCategoriaFinal:
+    - Inserta al final de la lista simple de categorías.
+    - Valida duplicidad de ID y campos no vacíos.
+*/
 void insertarCategoriaFinal(int id, string n, string d) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(d)) {
         cout << " Datos invalidos al insertar Categoria.\n"; return;
@@ -379,6 +415,11 @@ void insertarCategoriaFinal(int id, string n, string d) {
     categorias* actual = primeroC; while (actual->sig != NULL) actual = actual->sig;
     actual->sig = nuevo;
 }
+
+/*
+  insertarParticipante:
+    - Inserta al final de la lista doble de participantes.
+*/
 void insertarParticipante(int id, string n, string c) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(c)) {
         cout << " Datos invalidos al insertar Participante.\n"; return;
@@ -390,6 +431,11 @@ void insertarParticipante(int id, string n, string c) {
     participantes* actual = primeroP; while (actual->sig != NULL) actual = actual->sig;
     actual->sig = nuevo; nuevo->ant = actual;
 }
+
+/*
+  insertarOrganizador:
+    - Inserta al final de la lista doble de organizadores.
+*/
 void insertarOrganizador(int id, string n, string d) {
     if (id_invalido(id) || str_vacia(n) || str_vacia(d)) {
         cout << " Datos invalidos al insertar Organizador.\n"; return;
@@ -401,6 +447,12 @@ void insertarOrganizador(int id, string n, string d) {
     Organizadores* actual = primeroOr; while (actual->sig != NULL) actual = actual->sig;
     actual->sig = nuevo; nuevo->ant = actual;
 }
+
+/*
+  insertarRecurso:
+    - Inserta al final de la lista doble de recursos.
+    - Evita nombres duplicados.
+*/
 void insertarRecurso(string n, string d) {
     if (str_vacia(n) || str_vacia(d)) {
         cout << " Datos invalidos al insertar Recurso.\n"; return;
@@ -412,6 +464,12 @@ void insertarRecurso(string n, string d) {
     Recursos* actual = primeroR; while (actual->sig != NULL) actual = actual->sig;
     actual->sig = nuevo; nuevo->ant = actual;
 }
+
+/*
+  insertarHistorialOrdenado:
+    - Inserta en lista circular de historial manteniendo orden por fecha (string).
+    - Maneja los casos: lista vacía, insertar antes del primero, o en el medio.
+*/
 void insertarHistorialOrdenado(int id, string f, participantes* p, eventos* e) {
     if (id_invalido(id) || str_vacia(f) || p==NULL || e==NULL) {
         cout << " Datos invalidos al insertar Historial.\n"; return;
@@ -440,6 +498,10 @@ void insertarHistorialOrdenado(int id, string f, participantes* p, eventos* e) {
 
 
 // Implementaciones de Relación
+/*
+  Todas crean enlaces unidireccionales en las sublistas correspondientes.
+  No eliminan ni duplican nodos principales.
+*/
 void asignarOrganizadorEvento(int orgID, int eventoID) {
     Organizadores* org = buscarOrganizador(orgID);
     eventos* ev = buscarEvento(eventoID);
@@ -451,8 +513,10 @@ void inscribirParticipanteEvento(int partID, int eventoID) {
     participantes* part = buscarParticipante(partID);
     eventos* ev = buscarEvento(eventoID);
     if (!part || !ev) return;
+    // Participante -> Evento
     enlaceEventoParticipante* nuevoEnlaceP = new enlaceEventoParticipante{ev, part->listaEventos};
     part->listaEventos = nuevoEnlaceP;
+    // Evento -> Participante
     enlaceParticipante* nuevoEnlaceE = new enlaceParticipante{part, ev->listaParticipantes};
     ev->listaParticipantes = nuevoEnlaceE;
 }
@@ -489,6 +553,11 @@ void registrarHistorial(int historialID, string fecha, int partID, int eventoID)
 // ===================================================================
 
 // ------------------- VALIDACIONES EXTRA -------------------
+/*
+  esFechaValida:
+    - Verifica formato "YYYY-MM-DD": longitud, guiones en posiciones 4 y 7,
+      y dígitos en el resto. No valida meses cortos ni bisiestos.
+*/
 bool esFechaValida(const string& f){
     // Formato esperado: YYYY-MM-DD => longitud 10, guiones en 4 y 7
     if (f.size() != 10) return false;
@@ -512,6 +581,11 @@ bool esFechaValida(const string& f){
     return true;
 }
 
+/*
+  esTextoRazonable:
+    - Acepta al menos una letra (ASCII o con acento básico).
+    - Evita entradas puramente numéricas o símbolos sueltos.
+*/
 bool esTextoRazonable(const string& s){
     // Debe tener al menos una letra (evita entradas como "56" o "5")
     for(char c : s){
@@ -524,6 +598,12 @@ bool esTextoRazonable(const string& s){
 }
 
 
+/*
+  modificarEvento:
+    - Actualiza nombre/fecha/lugar/tipo con validaciones.
+    - Si cambia la fecha, reubica el nodo para mantener ORDEN por fecha.
+    - Complejidad: O(n) para localización/reinserción.
+*/
 bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevoLugar, string nuevoTipo){
     eventos* e = buscarEvento(id);
     if(!e){ cout<<" Evento no encontrado.\n"; return false; }
@@ -551,6 +631,10 @@ bool modificarEvento(int id, string nuevoNombre, string nuevaFecha, string nuevo
     e->sig = a->sig; a->sig = e; return true;
 }
 
+/*
+  modificarCategoria/Participante/Organizador/Recurso:
+    - Cambian campos básicos con validaciones de no vacío/duplicados.
+*/
 bool modificarCategoria(int id, string nuevoNombre, string nuevaDesc){
     categorias* c = buscarCategoria(id); if(!c){ cout<<" Categoria no encontrada.\n"; return false; }
     if (str_vacia(nuevoNombre) || str_vacia(nuevaDesc)){ cout<<" Datos invalidos.\n"; return false; }
@@ -574,6 +658,16 @@ bool modificarRecurso(const string& nombreActual, string nuevoNombre, string nue
 }
 
 // ---- Eliminar ----
+/*
+  eliminarEvento:
+    - Desconecta TODAS las referencias a este evento:
+        1) desde todos los organizadores (sublista de eventos a cargo),
+        2) desde participantes y su lista de eventos,
+        3) desde la sublista de recursos del evento,
+        4) desde historial (lista circular),
+        5) finalmente, lo retira de la lista principal 'primeroE'.
+    - Complejidad total: O(n + m + ...), lineal en el tamaño de las relaciones.
+*/
 bool eliminarEvento(int id){
     eventos* target = buscarEvento(id); if(!target){ cout<<" Evento no encontrado.\n"; return false; }
 
@@ -612,7 +706,7 @@ bool eliminarEvento(int id){
     while(er){ enlaceRecurso* tmp=er; er=er->sig; delete tmp; }
     target->listaRecursos=NULL;
 
-    // 4) quitar del historial
+    // 4) quitar del historial (manejar circular, casos de único nodo / cabeza)
     if(primeroHistorial){
         historial_eventos* curr=primeroHistorial; historial_eventos* prev=NULL;
         do{
@@ -644,6 +738,13 @@ bool eliminarEvento(int id){
     delete target;
     return true;
 }
+
+/*
+  eliminarCategoria:
+    - Desasocia todos los eventos que apuntan a ella.
+    - Libera sublista de enlaces de la categoría.
+    - Remueve el nodo de la lista principal.
+*/
 bool eliminarCategoria(int id){
     categorias* c = buscarCategoria(id); if(!c){ cout<<" Categoria no encontrada.\n"; return false; }
     // desasociar eventos que apuntan a esta categoria
@@ -653,11 +754,19 @@ bool eliminarCategoria(int id){
     enlaceCategoriaEvento* ce = c->listaEventos;
     while(ce){ enlaceCategoriaEvento* tmp=ce; ce=ce->sig; delete tmp; }
     // quitar de lista simple
-    categorias* dummy = new categorias(-1,"",""); dummy->sig = primeroC;
+    categorias* dummy = new categorias(-1,"","");
+    dummy->sig = primeroC;
     categorias* pr = dummy; while(pr->sig && pr->sig!=c) pr=pr->sig;
     if(pr->sig==c){ pr->sig = c->sig; }
     primeroC = dummy->sig; delete dummy; delete c; return true;
 }
+
+/*
+  eliminarParticipante:
+    - Quita enlaces en cada evento y su propia sublista de eventos.
+    - Quita entradas del historial donde aparece.
+    - Remueve de la lista doble principal.
+*/
 bool eliminarParticipante(int id){
     participantes* p = buscarParticipante(id); if(!p){ cout<<" Participante no encontrado.\n"; return false; }
     // quitar en cada evento su enlaceParticipante y su lista de eventos
@@ -674,7 +783,7 @@ bool eliminarParticipante(int id){
         }
         enlaceEventoParticipante* tmp=evp; evp=evp->sig; delete tmp;
     }
-    // quitar del historial
+    // quitar del historial (circular)
     if(primeroHistorial){
         historial_eventos* curr=primeroHistorial; historial_eventos* prev=NULL;
         do{
@@ -693,6 +802,12 @@ bool eliminarParticipante(int id){
     if(p->sig) p->sig->ant = p->ant;
     delete p; return true;
 }
+
+/*
+  eliminarOrganizador:
+    - Libera sus enlaces a eventos (no borra los eventos).
+    - Remueve el organizador de la lista doble.
+*/
 bool eliminarOrganizador(int id){
     Organizadores* o = buscarOrganizador(id); if(!o){ cout<<" Organizador no encontrado.\n"; return false; }
     // liberar su sublista de eventos (solo enlaces, no borrar eventos)
@@ -702,6 +817,12 @@ bool eliminarOrganizador(int id){
     if(o->sig) o->sig->ant = o->ant;
     delete o; return true;
 }
+
+/*
+  eliminarRecurso:
+    - Quita referencia del recurso en todos los eventos donde esté.
+    - Remueve el recurso de la lista doble de recursos.
+*/
 bool eliminarRecurso(const string& nombre){
     Recursos* r = buscarRecurso(nombre); if(!r){ cout<<" Recurso no encontrado.\n"; return false; }
     // quitar de todos los eventos donde aparezca
@@ -722,6 +843,12 @@ bool eliminarRecurso(const string& nombre){
     if(r->sig) r->sig->ant = r->ant;
     delete r; return true;
 }
+
+/*
+  eliminarHistorial:
+    - Elimina por ID de la lista circular.
+    - Maneja los casos especiales (único nodo, cabeza).
+*/
 bool eliminarHistorial(int id){
     if(!primeroHistorial){ cout<<" Historial vacio.\n"; return false; }
     historial_eventos* curr=primeroHistorial; historial_eventos* prev=NULL;
@@ -929,6 +1056,7 @@ void consultaEventoMasParticipantes() {
     else
         cout << " No se encontraron eventos con participantes inscritos.\n";
 }
+
 // 8️⃣ Organizador que ha gestionado eventos en más categorías distintas
 void consultaOrganizadorMasCategorias() {
     if (primeroOr == NULL) { cout << " No hay organizadores registrados.\n"; return; }
@@ -1004,6 +1132,10 @@ void consultaPorcentajeParticipacion() {
 // ===================================================================
 
 // ------------------- Auxiliares para Reportes -------------------
+/*
+  obtenerApellido:
+    - Devuelve la subcadena posterior al último espacio (heurística de apellido).
+*/
 string obtenerApellido(string nombreCompleto) {
     int lastSpaceIndex = -1;
     for (int i = 0; i < (int)nombreCompleto.length(); i++) {
@@ -1012,6 +1144,12 @@ string obtenerApellido(string nombreCompleto) {
     if (lastSpaceIndex != -1) { return nombreCompleto.substr(lastSpaceIndex + 1); }
     return nombreCompleto;
 }
+
+/*
+  swapData / swapDataEventos:
+    - Intercambian los campos de dos nodos (sin mover punteros de la lista).
+    - Se usan para ordenamientos "in-place" por intercambio de datos.
+*/
 void swapData(participantes* a, participantes* b) {
     int tempID = a->ID; string tempNombre = a->nombre; string tempCarrera = a->carrera;
     enlaceEventoParticipante* tempLista = a->listaEventos;
@@ -1038,7 +1176,7 @@ void reporteParticipantesPorApellido(bool ascendente) {
         return;
     }
 
-    // --- ordenamiento por apellido (como lo tenías) ---
+    // --- ordenamiento por apellido (burbuja sobre lista doble con swapData) ---
     bool intercambio;
     participantes *actual, *siguiente;
     do {
@@ -1348,6 +1486,11 @@ void reporteEventosPorLugarFecha() {
 // ==================== IMPLEMENTACIÓN CARGA INICIAL =================
 // ===================================================================
 
+/*
+  cargarDatosIniciales:
+    - Población de datos de ejemplo (IDs, fechas, nombres y relaciones).
+    - Útil para probar menús/reportes/consultas sin necesidad de capturar todo.
+*/
 void cargarDatosIniciales() {
 
 
@@ -1361,7 +1504,7 @@ void cargarDatosIniciales() {
     insertarRecurso("Piscina", "Espacio con agua para practicar deportes acuaticos.");
     insertarRecurso("Gimnasio", "Espacio techado donde se practican actividades fisicas.");
     insertarRecurso("Parlante","Dispositivo que permite emitir sonido");
-    // 3. Eventos
+    // 3. Eventos (ordenados por fecha al insertarse)
     insertarEventoOrdenado(2122, "Noche de Peliculas", "2025-10-05", "AULA-CUL1", "Entretenimiento");
     insertarEventoOrdenado(2190, "Principios en Unity", "2025-10-04", "C-TEC", "Charla");
     insertarEventoOrdenado(2129, "Torneo de Futbol Sala", "2025-10-03", "Gimnasio TEC", "Recreativa");
@@ -1416,6 +1559,10 @@ void cargarDatosIniciales() {
 // ==================== MENÚ Y FUNCIONES DE IMPRESIÓN ================
 // ===================================================================
 
+/*
+  imprimirTodasLasConsultas:
+    - Ejecuta e imprime los 9 indicadores/consultas principales.
+*/
 void imprimirTodasLasConsultas() {
     cout << "\n=============================================\n";
     cout << "         RESULTADOS DE LAS 9 CONSULTAS         \n";
@@ -1434,6 +1581,11 @@ void imprimirTodasLasConsultas() {
     cout << "---------------------------------------------\n";
 }
 
+/*
+  imprimirTodosLosReportes:
+    - Ejecuta e imprime los 8 reportes de la rúbrica (con IDs/lugares fijos).
+    - Útil como demostración, pero en el menú real se piden datos al usuario.
+*/
 void imprimirTodosLosReportes() {
     cout << "\n=============================================\n";
     cout << "         IMPRESION DE LOS 8 REPORTES         \n";
@@ -1471,6 +1623,10 @@ void imprimirTodosLosReportes() {
 // =============== INPUTS Y MOSTRAR ==================
 // ===================================================
 
+/*
+  leerEntero:
+    - Solicita entero seguro (maneja fallos de extracción de cin).
+*/
 int leerEntero(const string& msg){
     cout << msg;
     int x;
@@ -1483,6 +1639,10 @@ int leerEntero(const string& msg){
     return x;
 }
 
+/*
+  leerLinea:
+    - Captura línea completa (incluye espacios).
+*/
 string leerLinea(const string& msg){
     cout << msg;
     string s;
@@ -1490,6 +1650,11 @@ string leerLinea(const string& msg){
     return s;
 }
 
+/*
+  organizadoresDelEvento:
+    - Construye un string con los nombres de los organizadores para un evento
+      buscando en la lista de organizadores y sus sublistas de enlaces.
+*/
 string organizadoresDelEvento(eventos* e){
     if(!e) return "(error)";
     string res;
@@ -1513,6 +1678,10 @@ string organizadoresDelEvento(eventos* e){
 
 
 // Mostrar simples (usando las listas ya existentes)
+/*
+  mostrarEventos:
+    - Imprime todos los eventos con sus relaciones (recursos, organizadores, participantes).
+*/
 void mostrarEventos(){
     cout << "\n--- EVENTOS (lista por fecha asc) ---\n";
     if(!primeroE){
@@ -1567,7 +1736,10 @@ void mostrarEventos(){
     }
 }
 
-
+/*
+  mostrarRecursos/Categorias/Organizadores/Participantes/Historial:
+    - Vistas compactas de cada lista para facilitar selección en menús.
+*/
 void mostrarRecursos(){
     cout << "\n--- RECURSOS (lista doble) ---\n";
     if(!primeroR){ cout << "   (vacio)\n"; return; }
@@ -1604,6 +1776,10 @@ void mostrarCategorias(){
     }
 }
 
+/*
+  yaInscritoEvento / yaAsignadoRecursoEvento:
+    - Chequeos de existencia en sublistas (evitan duplicados).
+*/
 bool yaInscritoEvento(participantes* p, eventos* e){
     if(!p || !e) return false;
     for(enlaceEventoParticipante* aux = p->listaEventos; aux; aux = aux->sig)
@@ -1620,6 +1796,10 @@ bool yaAsignadoRecursoEvento(int eventoID, const string& recursoNombre){
     return false;
 }
 
+/*
+  agregarParticipanteEventoSiNoExiste / agregarRecursoEventoSiNoExiste:
+    - Validan existencia y duplicados antes de crear el enlace.
+*/
 bool agregarParticipanteEventoSiNoExiste(int eventoID, int partID){
     eventos* e = buscarEvento(eventoID);
     participantes* p = buscarParticipante(partID);
@@ -1647,8 +1827,11 @@ bool agregarRecursoEventoSiNoExiste(int eventoID, const string& recursoNombre){
 }
 
 
-
-
+/*
+  menuReemplazosEvento:
+    - Interfaz para reemplazar campos básicos y relaciones de un evento.
+    - Usa las funciones de reemplazo que delegan en modificar/borrar/asignar.
+*/
 void menuReemplazosEvento(){
     mostrarEventos();
     int eid = leerEntero("ID del evento a modificar (reemplazos/agregados): ");
@@ -1746,7 +1929,9 @@ void menuReemplazosEvento(){
                 if(!asignado){ cout<<"  ID:"<<o->ID<<" | "<<o->nombre<<"\n"; hayNoAsig=true; }
                 o=o->sig;
             }
-            if(!hayNoAsig){ cout<<"  (ninguno)\n"; }
+            if(!hayNoAsig){ cout<<"  (ninguno)\n";
+
+            }
 
             int oAct = leerEntero("ID ORGANIZADOR ACTUAL (de la lista de asignados): ");
             int oNew = leerEntero("ID ORGANIZADOR NUEVO (de la lista de no asignados): ");
@@ -1876,12 +2061,15 @@ void menuReemplazosEvento(){
 
 
 
-
-
 // ===================================================
 // ================= SUBMENÚS CRUD ====================
 // ===================================================
 
+/*
+  CRUD por entidad:
+    - Menús interactivos para Insertar/Modificar/Eliminar/Mostrar.
+    - Las opciones delegan en funciones ya documentadas.
+*/
 void crudEventos(){
     int op;
     do{
@@ -1908,23 +2096,54 @@ void crudEventos(){
 void mostrarOrganizadores(){
     cout << "\n--- ORGANIZADORES DISPONIBLES ---\n";
     if(!primeroOr){ cout << "   (vacio)\n"; return; }
-    Organizadores* o = primeroOr;
-    while(o){
+
+    for(Organizadores* o = primeroOr; o; o = o->sig){
         cout << "ID:" << o->ID << " | " << o->nombre << " | " << o->departamento << "\n";
-        o = o->sig;
+        cout << "   Eventos a cargo: ";
+        if(!o->listaEventos){
+            cout << "(ninguno)\n";
+        }else{
+            int k = 0;
+            for(enlaceEvento* le = o->listaEventos; le; le = le->sig){
+                if(le->refEvento){
+                    if(k++) cout << ", ";
+                    cout << le->refEvento->nombre << " [" << le->refEvento->fecha << "]";
+                }
+            }
+            if(k == 0) cout << "(ninguno)";
+            cout << "\n";
+        }
     }
 }
 
 void mostrarParticipantes(){
     cout << "\n--- PARTICIPANTES DISPONIBLES ---\n";
     if(!primeroP){ cout << "   (vacio)\n"; return; }
-    participantes* p = primeroP;
-    while(p){
+
+    for(participantes* p = primeroP; p; p = p->sig){
         cout << "ID:" << p->ID << " | " << p->nombre << " | " << p->carrera << "\n";
-        p = p->sig;
+        cout << "   Eventos inscritos: ";
+        if(!p->listaEventos){
+            cout << "(ninguno)\n";
+        }else{
+            int k = 0;
+            for(enlaceEventoParticipante* le = p->listaEventos; le; le = le->sig){
+                if(le->refEvento){
+                    if(k++) cout << ", ";
+                    cout << le->refEvento->nombre << " [" << le->refEvento->fecha << "]";
+                }
+            }
+            if(k == 0) cout << "(ninguno)";
+            cout << "\n";
+        }
     }
 }
 
+/*
+  insertarEventoInteractivo:
+    - Solicita datos con validación y agrega categorías/organizadores/
+      participantes/recursos opcionalmente.
+*/
 void insertarEventoInteractivo(){
     int id;
     string n, f, l, t;
@@ -1960,12 +2179,12 @@ void insertarEventoInteractivo(){
 
     // Tipo (texto razonable)
     while(true){
-        t = leerLinea("Tipo (Charla/Taller/Feria/Deportivo/...): ");
+        t = leerLinea("Tipo (Charla/Taller/Entretenimiento/Recreativa/...): ");
         if(str_vacia(t) || !esTextoRazonable(t)){ cout<<" Tipo invalido. Debe ser texto.\n"; continue; }
         break;
     }
 
-
+    insertarEventoOrdenado(id, n, f, l, t);
 
     // ====== Categoria (opcional, pero valida que exista) ======
     if(!primeroC){
@@ -1982,10 +2201,9 @@ void insertarEventoInteractivo(){
     }
 
     // Inserción (ordenado por fecha)
-    insertarEventoOrdenado(id, n, f, l, t);
+
     cout << " Evento creado: " << n << " (" << f << ") en " << l << ".\n";
 
-    // ====== Organizador (REQUERIDO) ======
     // ====== (Opcional) Organizadores ======
     string orgYN = leerLinea(" Asociar organizadores ahora? (s/n): ");
     if(!orgYN.empty() && (orgYN[0]=='s' || orgYN[0]=='S')){
@@ -2009,7 +2227,6 @@ void insertarEventoInteractivo(){
         }
     }
 
-    // ====== Participante (REQUERIDO) ======
     // ====== (Opcional) Participantes ======
     string partYN = leerLinea("Inscribir participantes ahora? (s/n): ");
     if(!partYN.empty() && (partYN[0]=='s' || partYN[0]=='S')){
@@ -2037,7 +2254,7 @@ void insertarEventoInteractivo(){
     }
 
 
-    // ====== Recurso (REQUERIDO) ======
+    // ====== (Opcional) Recursos ======
     string recYN = leerLinea("Asignar recursos ahora? (s/n): ");
     if(!recYN.empty() && (recYN[0]=='s' || recYN[0]=='S')){
         if(!primeroR){
@@ -2062,6 +2279,10 @@ void insertarEventoInteractivo(){
 }
 
 
+/*
+  CRUD Categorías/Participantes/Organizadores/Recursos/Historial:
+    - Similar patrón a crudEventos con capturas y validación básica.
+*/
 void crudCategorias(){
     int op;
     do{
@@ -2123,13 +2344,8 @@ void crudParticipantes(){
             int id = leerEntero("ID a eliminar: ");
             eliminarParticipante(id);
         }else if(op==4){
-            cout << "\n--- PARTICIPANTES ---\n";
-            if(!primeroP){ cout << "   (vacio)\n"; }
-            participantes* p = primeroP;
-            while(p){
-                cout << "ID:" << p->ID << " | " << p->nombre << " | " << p->carrera << "\n";
-                p = p->sig;
-            }
+            mostrarParticipantes();
+
         }
     }while(op!=0);
 }
@@ -2159,13 +2375,8 @@ void crudOrganizadores(){
             int id = leerEntero("ID a eliminar: ");
             eliminarOrganizador(id);
         }else if(op==4){
-            cout << "\n--- ORGANIZADORES ---\n";
-            if(!primeroOr){ cout << "   (vacio)\n"; }
-            Organizadores* o = primeroOr;
-            while(o){
-                cout << "ID:" << o->ID << " | " << o->nombre << " | " << o->departamento << "\n";
-                o = o->sig;
-            }
+            mostrarOrganizadores();
+
         }
     }while(op!=0);
 }
@@ -2223,6 +2434,10 @@ void crudHistorial(){
 }
 
 
+/*
+  menuCRUD:
+    - Submenú general para acceder a CRUD por entidad.
+*/
 void menuCRUD(){
     int op;
     do{
@@ -2251,6 +2466,9 @@ void menuCRUD(){
     }while(op!=0);
 }
 
+/*
+  Chequeos de relación (organizador/participante/recurso) ya asignados.
+*/
 bool yaAsignadoOrganizador(int orgID, int eventoID){
     Organizadores* o = buscarOrganizador(orgID);
     eventos* e = buscarEvento(eventoID);
@@ -2276,6 +2494,10 @@ bool yaAsignadoRecurso(int eventoID, const string& recursoNombre){
     return false;
 }
 
+/*
+  desasignar/desinscribir/desasignarRecurso:
+    - Remueven enlaces específicos de las sublistas con mensajes de estado.
+*/
 void desasignarOrganizadorEvento(int orgID, int eventoID){
     Organizadores* o = buscarOrganizador(orgID);
     eventos* e = buscarEvento(eventoID);
@@ -2331,6 +2553,11 @@ void desasignarRecursoEvento(int eventoID, const string& nombre){
     }
     cout<<" Ese recurso no estaba asignado.\n";
 }
+
+/*
+  Reemplazos de campos básicos:
+    - Validan "actual" coincide con el estado del evento y usan modificarEvento.
+*/
 bool reemplazarNombreEvento(int eventoID, const string& nombreActual, const string& nombreNuevo){
     eventos* e = buscarEvento(eventoID);
     if(!e){ cout<<" Evento no encontrado.\n"; return false; }
@@ -2363,6 +2590,12 @@ bool reemplazarTipoEvento(int eventoID, const string& tipoActual, const string& 
     if(str_vacia(tipoNuevo) || !esTextoRazonable(tipoNuevo)){ cout<<" Tipo nuevo invalido.\n"; return false; }
     return modificarEvento(e->ID, e->nombre, e->fecha, e->lugar, tipoNuevo);
 }
+
+/*
+  Reemplazar relaciones (Categoría/Organizador/Participante/Recurso):
+    - Mantienen consistencia eliminando el enlace anterior y creando el nuevo.
+    - Consideran casos "nuevo ya estaba" -> solo quita el actual.
+*/
 bool reemplazarCategoriaEvento(int eventoID, int catActualID, int catNuevaID){
     eventos* e = buscarEvento(eventoID);
     if(!e){ cout<<" Evento no encontrado.\n"; return false; }
@@ -2459,6 +2692,10 @@ bool reemplazarRecursoEvento(int eventoID, const string& recursoActual, const st
     return true;
 }
 
+/*
+  insertarCategoriaInteractivo:
+    - Flujo interactivo con validación de ID único, nombre y descripción.
+*/
 void insertarCategoriaInteractivo(){
     int id;
     string n, d;
@@ -2496,6 +2733,11 @@ void insertarCategoriaInteractivo(){
     cout << " Categoria creada.\n";
 }
 
+/*
+  Historial utilidades:
+    - existeRegistroHistorial: evita duplicados (participante,evento).
+    - siguienteHistID: asigna ID incremental (máximo+1).
+*/
 bool existeRegistroHistorial(int partID, int eventoID){
     if(!primeroHistorial) return false;
     historial_eventos* h = primeroHistorial;
@@ -2522,7 +2764,13 @@ int siguienteHistID(){
     return maxID + 1;
 }
 
-// Registro simplificado: solo pides ID de evento
+/*
+  registrarHistorialSoloConEvento:
+    - Permite registrar en historial tomando el evento y:
+      * si hay 1 participante, lo elige automáticamente;
+      * si hay varios, solicita ID.
+    - Usa la fecha del evento por defecto.
+*/
 void registrarHistorialSoloConEvento(){
     mostrarEventos();
     int eid = leerEntero("ID evento a registrar en historial: ");
@@ -2584,6 +2832,10 @@ void registrarHistorialSoloConEvento(){
 }
 
 // ======================== SUBMENU: REPORTES =========================
+/*
+  menuReportes:
+    - Ofrece 8 reportes principales pidiendo parámetros cuando corresponda.
+*/
 void menuReportes(){
     int op;
     do{
@@ -2660,6 +2912,10 @@ void menuReportes(){
 }
 
 // ===== Menú de Consultas (9) =====
+/*
+  menuConsultas:
+    - Ejecuta cada una de las 9 consultas o todas en bloque.
+*/
 void menuConsultas(){
     int op;
     do{
@@ -2702,6 +2958,10 @@ void menuConsultas(){
     }while(op != 0);
 }
 
+/*
+  agregarOrganizadorEventoSiNoExiste:
+    - Valida existencia/no duplicado y asigna.
+*/
 bool agregarOrganizadorEventoSiNoExiste(int eventoID, int orgID){
     eventos* e = buscarEvento(eventoID);
     if(!e){ cout<<" Evento no encontrado.\n"; return false; }
@@ -2718,6 +2978,11 @@ bool agregarOrganizadorEventoSiNoExiste(int eventoID, int orgID){
 
 
 // ------------------- FUNCIÓN PRINCIPAL DEL PROGRAMA -------------------
+/*
+  main:
+    - Carga datos de ejemplo.
+    - Muestra menú principal para acceder a CRUD/Consultas/Reportes.
+*/
 int main() {
     // Cargar datos
     cargarDatosIniciales();
