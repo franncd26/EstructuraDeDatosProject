@@ -1523,9 +1523,10 @@ void cargarDatosIniciales() {
 
     // 6. Asignación de Relaciones
     asignarCategoriaEvento(2122, 1212);
-    asignarCategoriaEvento(2129, 1414);
+    asignarCategoriaEvento(2129, 1313);
     asignarCategoriaEvento(2134, 1313);
-    asignarCategoriaEvento(2178, 1313);
+    asignarCategoriaEvento(2178, 1212);
+    asignarCategoriaEvento(2190, 1414);
 
 
     asignarOrganizadorEvento(207380123, 2122);
@@ -1546,6 +1547,7 @@ void cargarDatosIniciales() {
     asignarRecursoEvento(2129, "Gimnasio");
     asignarRecursoEvento(2134, "Piscina");
     asignarRecursoEvento(2178, "Parlante");
+    asignarRecursoEvento(2122, "Gimnasio");
 
     registrarHistorial(2121, "2025-09-21", 208770567, 2178);
     registrarHistorial(3434, "2025-09-21", 208770567, 2134);
